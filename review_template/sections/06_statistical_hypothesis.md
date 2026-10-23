@@ -1,0 +1,7 @@
+# Statistical Hypothesis:
+
+[[HYPOTHESIS.STATEMENT]]
+
+[[HYPOTHESIS.MARGIN]]
+
+[[HYPOTHESIS.SUCCESS]]

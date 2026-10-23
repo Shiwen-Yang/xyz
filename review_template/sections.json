@@ -1,0 +1,524 @@
+[
+  {
+    "number": 1,
+    "file": "01_executive_summary.md",
+    "title": "Executive Summary:",
+    "source_tex": "content/1_executive_summary.tex",
+    "instructions": "Draft last, using the approved report and approved concerns. Write a short abstract of salient protocol features, major issues, and important requests. Do not introduce new findings.",
+    "fields": [
+      {
+        "id": "EXECUTIVE.SUMMARY",
+        "label": "Summary",
+        "instructions": "Include phase/design, product and comparator, population and planned sample size, primary endpoint(s), important interim features, and approved major concerns or requests. The TeX example of a phase 3 trial with 160 adults and 25 children is illustrative, never submission evidence.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 2,
+    "file": "02_background.md",
+    "title": "Background:",
+    "source_tex": "content/2_background.tex",
+    "instructions": "Use the protocol plus separately identified background sources. Prior regulatory history may require correspondence or reviewer input; its absence from the protocol does not establish that no agreement exists.",
+    "fields": [
+      {
+        "id": "BACKGROUND.SUBMISSION",
+        "label": "Submission description",
+        "instructions": "Briefly describe what was submitted, including the protocol identifier, version, and date where provided.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "BACKGROUND.PRODUCT",
+        "label": "Product information",
+        "instructions": "Briefly summarize relevant product information from the supplied sources.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "BACKGROUND.HISTORY",
+        "label": "Relevant review history and agreements",
+        "instructions": "Describe previous statistics-related reviews/agreements and relevant historical regulatory events. For VEB, include relevant clinical holds and their lifting, and meetings discussing protocol elements, where documented. Distinguish historical proposals from the current protocol. Mark unavailable history as reviewer input required.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 3,
+    "file": "03_primary_objectives.md",
+    "title": "Primary Objective(s):",
+    "source_tex": "content/3_primary_objectives.tex",
+    "instructions": "Describe primary objectives. Include secondary/key secondary objectives only when statistically important to this review.",
+    "fields": [
+      {
+        "id": "OBJECTIVES.PRIMARY",
+        "label": "Primary objectives",
+        "instructions": "State each primary study objective and connect it to an identifiable endpoint where supported.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "OBJECTIVES.OTHER",
+        "label": "Statistically important secondary objectives",
+        "instructions": "Include relevant secondary/key secondary objectives; omit this paragraph if not applicable and record the disposition in the evidence log.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 4,
+    "file": "04_design_features.md",
+    "title": "Design Features:",
+    "source_tex": "content/4_design_features.tex",
+    "instructions": "Describe the study design. For a single-arm study omit inapplicable allocation-ratio, stratification, blinding, and comparative treatment-arm bullets after confirming applicability; describe the intervention/regimen in the population or other-features text. Do not lose the only intervention description when removing comparator fields. Do not discuss interim looks or non-inferiority design here; put those in sections 9 and 6.",
+    "fields": [
+      {
+        "id": "DESIGN.POPULATION",
+        "label": "Study population",
+        "instructions": "Describe key target-population characteristics and important eligibility boundaries, such as age range and disease status.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "DESIGN.RANDOMIZATION",
+        "label": "Treatment Allocation and Randomization",
+        "instructions": "Describe stratified randomization, minimization, non-randomized concurrent control, or single-arm design.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "DESIGN.ALLOCATION_RATIO",
+        "label": "allocation ratio",
+        "instructions": "State the ratio and named arms, e.g. 1:1 or 2:1. Omit if not applicable.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "DESIGN.STRATA",
+        "label": "stratification factors",
+        "instructions": "List all randomization factors with categories if stated, e.g. disease stage, site, or region. State none only if supported.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "DESIGN.BLINDING",
+        "label": "Blinding",
+        "instructions": "State open label, single blind, or double blind and specify who is blinded and who can access treatment allocation before database lock (subjects, investigators, surgeons, outcome evaluators). Omit for single-arm designs per this template.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "DESIGN.ARMS",
+        "label": "Treatment Arms",
+        "instructions": "Group containing arm descriptions; a simple rectangular table may replace this group. Add a named arm entry for every additional arm. Omit the comparative group for single-arm designs.",
+        "depth": 0,
+        "group": true
+      },
+      {
+        "id": "DESIGN.ARM.EXPERIMENTAL",
+        "label": "experimental",
+        "instructions": "Describe the experimental intervention, including dose, route, and schedule where relevant; repeat with explicit arm names/IDs if multiple experimental arms.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "DESIGN.ARM.CONTROL",
+        "label": "control",
+        "instructions": "Describe standard of care, placebo, or other comparator, with regimen as relevant; repeat for additional controls.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "DESIGN.SITES",
+        "label": "Site(s)",
+        "instructions": "Describe approximate site counts and countries/regions. Note the US population percentage if available.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "DESIGN.OTHER",
+        "label": "Other features",
+        "instructions": "Describe unusual important features, such as a delay between randomization and manufacturing/treatment or lot-consistency requirements before pooling efficacy data. Omit if none after reviewer confirmation. If a schematic is necessary, flag it for reviewer insertion in Word; the initial Markdown build does not embed figures.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 5,
+    "file": "05_endpoints.md",
+    "title": "Endpoints:",
+    "source_tex": "content/5_endpoints.tex",
+    "instructions": "Provide a detailed definition for every included endpoint. Repeat named endpoint subsections or labeled paragraphs as needed. Separate efficacy and safety if useful. Preserve measurement, assessment window/time origin, event definition, and derivation details that are stated; do not invent missing components.",
+    "fields": [
+      {
+        "id": "ENDPOINTS.PRIMARY",
+        "label": "Primary",
+        "instructions": "Define each primary endpoint in detail (e.g. disease rate, PFS, response rate). For vaccine studies specify clinical efficacy, immunogenicity, or both. Use repeated IDs such as ENDPOINTS.PRIMARY.PFS in the evidence log.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "ENDPOINTS.SECONDARY",
+        "label": "Secondary",
+        "instructions": "Define relevant secondary/key secondary endpoints in detail (e.g. immunological response, overall survival, pain score), preserving their priority as stated.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 6,
+    "file": "06_statistical_hypothesis.md",
+    "title": "Statistical Hypothesis:",
+    "source_tex": "content/6_statistical_hypothesis.tex",
+    "instructions": "State explicit hypotheses and define every parameter, treatment direction, and margin. If the protocol gives no formal hypothesis, report that it was not located rather than constructing one without labeling it as reviewer interpretation.",
+    "fields": [
+      {
+        "id": "HYPOTHESIS.STATEMENT",
+        "label": "Hypotheses and parameters",
+        "instructions": "State H0 and H1, with parameter definitions and endpoint linkage. Use standard math such as $H_0: \\mathrm{HR}=1$ versus $H_1: \\mathrm{HR}\\ne1$. Do not use custom TeX macros such as \\hnull or \\halt.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "HYPOTHESIS.MARGIN",
+        "label": "Non-inferiority/equivalence margin",
+        "instructions": "If applicable state the margin and sponsor rationale. Separate the stated justification from reviewer assessment; omit if not applicable.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "HYPOTHESIS.SUCCESS",
+        "label": "Study success criterion",
+        "instructions": "Describe how success is established when testing multiple hypotheses, including whether all or any must succeed and the testing sequence if stated. Omit if not applicable.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 7,
+    "file": "07_analyses_for_primary_endpoints.md",
+    "title": "Analyses for Primary Endpoint(s):",
+    "source_tex": "content/7_analyses_for_primary_endpoints.tex",
+    "instructions": "Repeat the complete analysis block under a named ## endpoint heading for every primary endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. PRIMARY_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.",
+    "fields": [
+      {
+        "id": "PRIMARY_ANALYSIS.PRIMARY",
+        "label": "Primary analysis",
+        "instructions": "Group containing the main analysis for the named endpoint.",
+        "depth": 0,
+        "group": true
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.METHOD",
+        "label": "statistical method",
+        "instructions": "Describe the specified method, e.g. stratified log-rank test, CMH for response rate, or ANCOVA; include relevant estimand details when provided.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.COVARIATES",
+        "label": "covariates or strata",
+        "instructions": "List the covariates/strata used in this analysis; distinguish them from randomization factors.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.SET",
+        "label": "analysis set",
+        "instructions": "Describe membership rules and how subjects are analyzed, rather than only stating ITT/mITT/PP. ITT example: all randomized subjects as randomized; mITT example: randomized and at least one treatment, as randomized; PP example: no major protocol violations. Use the sponsor definitions, which may differ from these examples. For primary analyses, if not as randomized, include the sponsor justification or flag a potential request for justification. For therapeutic/preventive vaccines, identify justification for mITT/PP when relevant.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.MISSING",
+        "label": "missing data handling",
+        "instructions": "Describe missing-data procedures and, for time-to-event endpoints, censoring rules and time points. Keep primary handling distinct from sensitivity analyses; examples include multiple imputation and tipping-point analyses.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.ALPHA",
+        "label": "α-level",
+        "instructions": "State one/two-sided alpha and multiplicity control across endpoints/hypotheses. Include applicable adjustment/gatekeeping/Bonferroni or other procedures, and connect to interim testing. Do not assume overall and local alpha are identical.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.SENSITIVITY",
+        "label": "Sensitivity/supportive",
+        "instructions": "Describe alternative methods, populations, and missing-data procedures, e.g. a Cox model for PFS or Fisher exact test for response rate.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "PRIMARY_ANALYSIS.SUBGROUP",
+        "label": "Subgroup analysis",
+        "instructions": "Describe planned subgroup analyses. Check whether age, sex, and race analyses are specified when applicable; distinguish a reviewer request from a sponsor plan.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 8,
+    "file": "08_analyses_for_other_important_endpoints.md",
+    "title": "Analyses for Other Important Endpoint(s):",
+    "source_tex": "content/8_analyses_for_other_important_endpoints.tex",
+    "instructions": "Repeat the complete analysis block under a named ## endpoint heading for every other statistically important endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. OTHER_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.",
+    "fields": [
+      {
+        "id": "OTHER_ANALYSIS.PRIMARY",
+        "label": "Primary analysis",
+        "instructions": "Group containing the main analysis for the named endpoint.",
+        "depth": 0,
+        "group": true
+      },
+      {
+        "id": "OTHER_ANALYSIS.METHOD",
+        "label": "statistical method",
+        "instructions": "Describe the specified method, e.g. stratified log-rank test, CMH for response rate, or ANCOVA; include relevant estimand details when provided.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.COVARIATES",
+        "label": "covariates or strata",
+        "instructions": "List the covariates/strata used in this analysis; distinguish them from randomization factors.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.SET",
+        "label": "analysis set",
+        "instructions": "Describe membership rules and how subjects are analyzed, rather than only stating ITT/mITT/PP. ITT example: all randomized subjects as randomized; mITT example: randomized and at least one treatment, as randomized; PP example: no major protocol violations. Use the sponsor definitions, which may differ from these examples. For primary analyses, if not as randomized, include the sponsor justification or flag a potential request for justification. For therapeutic/preventive vaccines, identify justification for mITT/PP when relevant.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.MISSING",
+        "label": "missing data handling",
+        "instructions": "Describe missing-data procedures and, for time-to-event endpoints, censoring rules and time points. Keep primary handling distinct from sensitivity analyses; examples include multiple imputation and tipping-point analyses.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.ALPHA",
+        "label": "α-level",
+        "instructions": "State one/two-sided alpha and multiplicity control across endpoints/hypotheses. Include applicable adjustment/gatekeeping/Bonferroni or other procedures, and connect to interim testing. Do not assume overall and local alpha are identical.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.SENSITIVITY",
+        "label": "Sensitivity/supportive",
+        "instructions": "Describe alternative methods, populations, and missing-data procedures, e.g. a Cox model for PFS or Fisher exact test for response rate.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "OTHER_ANALYSIS.SUBGROUP",
+        "label": "Subgroup analysis",
+        "instructions": "Describe planned subgroup analyses. Check whether age, sex, and race analyses are specified when applicable; distinguish a reviewer request from a sponsor plan.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 9,
+    "file": "09_interim_analyses.md",
+    "title": "Interim Analyses:",
+    "source_tex": "content/9_interim_analyses.tex",
+    "instructions": "If absence of interim analyses is established, replace all bullets with None and record the supporting evidence. Failure to locate an interim section is not evidence of absence. Distinguish efficacy, futility, safety, and sample-size-reestimation looks.",
+    "fields": [
+      {
+        "id": "INTERIM.ADAPTIVE",
+        "label": "Adaptive features",
+        "instructions": "Describe group sequential features, blinded/unblinded sample-size re-estimation, arm dropping, hybrid designs, or other adaptations.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "INTERIM.LOOKS",
+        "label": "Number of interim looks",
+        "instructions": "State the number and purpose of looks, distinguishing scheduled from other monitoring.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "INTERIM.METHOD",
+        "label": "Statistical method/approach",
+        "instructions": "Describe the sponsor method, e.g. O’Brien–Fleming or conditional power. Preserve any cited method references as supplied; do not fabricate references.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "INTERIM.TIMING",
+        "label": "Timing and boundaries at each look",
+        "instructions": "Give information fractions/event counts, efficacy/futility/safety/SSR boundaries, alpha spending, and whether futility is nonbinding, where stated. Flag adequacy of safety sample size if early efficacy stopping is relevant as a reviewer assessment.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "INTERIM.OPERATING",
+        "label": "Operating characteristics",
+        "instructions": "If available, summarize stopping/continuation probabilities under stated null and alternative scenarios; do not compute or invent missing values.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 10,
+    "file": "10_sample_size_estimation.md",
+    "title": "Sample Size Estimation:",
+    "source_tex": "content/10_sample_size_estimation.tex",
+    "instructions": "List planned accrual and expected primary-analysis contributors. If sizing is based on medical/regulatory considerations instead of power, explain that basis in the first bullet and omit the remaining calculation bullets; preserve any reviewer assessment of safety-sizing parameters in that explanation. Keep sponsor calculations separate from independent reviewer verification.",
+    "fields": [
+      {
+        "id": "SAMPLE_SIZE.SUBJECTS",
+        "label": "Number of subjects to be accrued/evaluated",
+        "instructions": "Give total and per-arm planned accrual, and expected evaluable subjects. Describe medical/regulatory sizing reasons if applicable.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.ALPHA",
+        "label": "Type-I error rate (one or two-sided)",
+        "instructions": "State the alpha and sidedness used in sizing, e.g. one-sided 0.025 or two-sided 0.05.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.POWER",
+        "label": "Power",
+        "instructions": "State target power or the reported power achieved with the planned sample size.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.ASSUMPTIONS",
+        "label": "Assumed values in the estimation",
+        "instructions": "Group of sizing assumptions; omit individual assumptions that do not apply.",
+        "depth": 0,
+        "group": true
+      },
+      {
+        "id": "SAMPLE_SIZE.EFFECT",
+        "label": "Treatment effect size",
+        "instructions": "Describe the expected/desired/clinically meaningful effect, with arm-specific rates where applicable; examples include HR 0.60 with medians or a rate difference of 0.30 (0.10 vs 0.40). For NI/equivalence, retain the assumed true difference, possibly zero, separately from the margin.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.SD",
+        "label": "Standard deviation",
+        "instructions": "Give the assumed SD for a continuous outcome; omit otherwise.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.DROPOUT",
+        "label": "Dropout/missing rate",
+        "instructions": "Give the assumed dropout/missing-data rate and its role in sizing.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.OTHER",
+        "label": "Others",
+        "instructions": "Include relevant assumptions such as overdispersion, accrual rates, and follow-up; omit if not applicable.",
+        "depth": 1,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.RATIONALE",
+        "label": "Rationale provided for assumed values",
+        "instructions": "Describe the sponsor rationale or cited evidence for sizing assumptions; missing rationale is a gap, not an invitation to create one.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.EVENTS",
+        "label": "Number of events required to stop/complete the trial",
+        "instructions": "State required events for a time-to-event design and distinguish interim from final targets. Omit if not applicable.",
+        "depth": 0,
+        "group": false
+      },
+      {
+        "id": "SAMPLE_SIZE.VERIFICATION",
+        "label": "Calculation verification",
+        "instructions": "Default to Pending reviewer verification. A protocol calculation is sponsor-reported, not independently verified. Only use Yes/No after the reviewer supplies verification results, software/procedure/version and inputs, and an accepted discrepancy assessment. A small difference may be accepted by the reviewer; the chatbot cannot decide that tolerance. If No, draft a potential sponsor comment for approval. Describe safety-sizing justification where relevant. Do not claim that an independent calculation occurred unless its results are supplied.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": false
+  },
+  {
+    "number": 11,
+    "file": "11_other_aspects.md",
+    "title": "Other Aspects:",
+    "source_tex": "content/11_other_aspects.tex",
+    "instructions": "Briefly describe important issues not covered elsewhere, such as product-specific safety concerns. If no other issues remain after reviewer assessment, retain the heading with Not applicable in the draft; the reviewer may omit this section at final Word editing, consistent with the original comment-out instruction. The automated 13-section build retains the heading. Less critical personal reference information belongs in a separate appendix, not this section.",
+    "fields": [
+      {
+        "id": "OTHER.ISSUES",
+        "label": "Other important issues",
+        "instructions": "Describe supported additional issues or record the reviewer-confirmed disposition. Keep optional personal notes in a separate local appendix file and insert it into Word manually if desired.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 12,
+    "file": "12_comments_to_review_team.md",
+    "title": "Comments to CBER Review Team:",
+    "source_tex": "content/12_comments_to_review_team.tex",
+    "instructions": "Reviewer approval is required. Include product-office comments/questions or internal explanation of approved letter-ready comments when needed. Do not copy sponsor comments here. State None only after reviewer confirmation.",
+    "fields": [
+      {
+        "id": "TEAM.COMMENTS",
+        "label": "Review-team comments",
+        "instructions": "Draft internal context/explanation separately from sponsor-facing language. If no reviewer decision has been supplied, mark Reviewer input required.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  },
+  {
+    "number": 13,
+    "file": "13_comments_and_questions_to_sponsor.md",
+    "title": "Comments and Questions to Sponsor:",
+    "source_tex": "content/13_comments_and_questions_to_sponsor.tex",
+    "instructions": "Reviewer approval is required. Produce letter-ready comments/questions and, where relevant, responses to sponsor statistics questions. Draft only from approved concerns and supplied evidence. State None only after reviewer confirmation.",
+    "fields": [
+      {
+        "id": "SPONSOR.COMMENTS",
+        "label": "Sponsor comments and questions",
+        "instructions": "Use numbered, actionable comments with a clear request and endpoint/section linkage. Until approved, label suggestions Potential concern — unapproved in the separate issue log and leave this report field as Reviewer input required.",
+        "depth": 0,
+        "group": false
+      }
+    ],
+    "prose": true
+  }
+]

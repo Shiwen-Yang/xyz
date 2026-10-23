@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+*.pyc
+# Local submissions, working drafts, and generated reports stay off Git.
+/reviews/
+/output/

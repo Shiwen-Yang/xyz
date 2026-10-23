@@ -1,0 +1,4 @@
+DRAFT: requires reviewer approval.
+Automated checks do not validate scientific accuracy, evidence completeness, or page layout.
+Flagged items:
+10_sample_size_estimation.md:21: - **Calculation verification:** Pending reviewer verification. Sponsor-reported figures have not been independently reproduced.
