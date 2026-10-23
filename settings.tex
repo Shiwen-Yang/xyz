@@ -1,0 +1,125 @@
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{graphicx}       %image package
+\usepackage{bm}
+\usepackage{bbm}
+%\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{dsfont}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage[fleqn]{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage[rightcaption]{sidecap}
+\usepackage[backend=biber,style=alphabetic,]{biblatex}
+\usepackage{titlesec}
+
+\usetikzlibrary{shapes.geometric, arrows}
+
+
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\Det}{Det}
+\DeclareMathOperator{\E}{E}
+\DeclareMathOperator{\ER}{ER}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\argmax}{arg\max}
+\DeclareMathOperator{\argmin}{arg\min}
+\DeclareMathOperator{\N}{\mathbb{N}}
+\DeclareMathOperator{\R}{\mathbb{R}}
+\DeclareMathOperator{\ind}{\mathbbm{1}}
+\DeclareMathOperator{\I}{I}
+\DeclareMathOperator{\Unif}{Unif}
+\DeclareMathOperator{\Ber}{Ber}
+\DeclareMathOperator{\Binom}{Binom}
+\DeclareMathOperator{\Poi}{Poi}
+\DeclareMathOperator{\Dir}{Dir}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\vecop}{Vec}
+\DeclareMathOperator{\conv}{Conv}
+\DeclareMathOperator{\supp}{Supp}
+\DeclareMathOperator{\relu}{ReLU}
+\DeclareMathOperator{\asto}{\overset{a.s.}{\longrightarrow}}
+\DeclareMathOperator{\pto}{\overset{p}{\longrightarrow}}
+\DeclareMathOperator{\dto}{\overset{d}{\longrightarrow}}
+\DeclareMathOperator{\hnull}{H_0}
+\DeclareMathOperator{\halt}{H_1}
+
+
+\newcommand{\pderiv}[3][]{\frac{\partial^{#1}}{ \partial #2}\left[ #3 \right]}
+\newcommand{\pderif}[3][]{\frac{\partial^{#1} #3}{ \partial #2}}
+\newcommand{\s}[2] {\sum_{#1}^{#2}}
+
+
+\newcommand{\fr}[1]{ \left( #1 \right)}
+\newcommand{\fb}[1]{ \left[ #1 \right]}
+\newcommand{\fc}[1]{ \left\{ #1 \right\}}
+\newcommand{\given}[1]{\left. #1 \right|}
+\newcommand{\set}[2]{\left\{#1 \left\vert #2 \right. \right\}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left| #1 \right|}
+
+\newcommand{\dls}[1]{{\color{red} #1}}
+\newcommand{\bls}[1]{{\color{blue} #1}}
+
+
+\newcounter{todocounter}
+\newcommand{\todonum}[2][]
+{\stepcounter{todocounter}\todo[#1]{\textbf{Action item \thetodocounter:} #2}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{theorem2}{Theorem}
+\newtheorem{theorem3}{Theorem}
+\newtheorem{theorem4}{Theorem}
+\newtheorem{theorem5}{Theorem}
+\newtheorem{acknowledgement}[theorem]{Acknowledgement}
+\newtheorem{algorithm}[theorem]{Algorithm}
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{case}[theorem]{Case}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{conclusion}[theorem]{Conclusion}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{conjecture}[theorem4]{Conjecture}
+\newtheorem{corollary}{Corollary}
+\newtheorem{assumption}{Assumption}
+\newtheorem{criterion}[theorem]{Criterion}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\newtheorem{lemma}{Lemma}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{solution}[theorem]{Solution}
+\newtheorem{summary}[theorem]{Summary}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%The flowchart stuff
+\tikzstyle{att0} = [rectangle, rounded corners, 
+minimum width=2cm, 
+minimum height=1cm,
+text centered, 
+draw=black, 
+fill=red!30]
+
+\tikzstyle{att1} = [rectangle, rounded corners, 
+minimum width=2cm, 
+minimum height=1cm,
+text centered, 
+draw=black, 
+fill=blue!30]
+
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
+\addbibresource{refs.bib}
