@@ -31,6 +31,14 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def file_hash(path):
+    checksum = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            checksum.update(chunk)
+    return checksum.hexdigest()
+
+
 def object_hash(value):
     return digest(json.dumps(value, sort_keys=True, ensure_ascii=False).encode("utf-8"))
 
@@ -120,7 +128,7 @@ def register_source(workspace, path, identifier, role, version, date, pages=None
     path = path.resolve()
     state["sources"][identifier] = dict(id=identifier, filename=path.name, path=str(path), role=role,
                                          version=version, date=date, pdf_pages=pages,
-                                         sha256=digest(path.read_bytes()))
+                                         sha256=file_hash(path))
     state["history"].append(dict(action="register_source", source_id=identifier, at=now()))
     save(workspace, state)
     print(f"Registered {identifier}: {path.name} ({role}, {version})")
@@ -132,7 +140,7 @@ def source_problems(state):
         path = Path(source["path"])
         if not path.is_file():
             problems.append(f"Source {identifier} is unavailable at its registered path")
-        elif digest(path.read_bytes()) != source["sha256"]:
+        elif file_hash(path) != source["sha256"]:
             problems.append(f"Source {identifier} changed; register its current version before proceeding")
     return problems
 
@@ -185,6 +193,7 @@ def schema_for(manifest):
                              "sources": {"type": "array", "items": source},
                              "explanation": string}}
     return {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object",
+            "$defs": {"record": record},
             "additionalProperties": False,
             "required": ["schema_version", "catalog_version", "request_id", "search_scope", "entities", "fields"],
             "properties": {"schema_version": {"type": "integer", "const": 1},
@@ -194,12 +203,18 @@ def schema_for(manifest):
                            "entities": {"type": "array", "items": entity},
                            "fields": {"type": "object", "additionalProperties": False,
                                       "required": list(manifest["fields"]),
-                                      "properties": {identifier: {"type": "array", "minItems": 1, "items": copy.deepcopy(record)}
+                                      "properties": {identifier: {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/record"}}
                                                      for identifier in manifest["fields"]}}}}
 
 
-def validate_schema(value, schema, location="$"):
+def validate_schema(value, schema, location="$", definitions=None):
     """Validate the finite JSON-Schema vocabulary emitted above, not arbitrary schemas."""
+    definitions = schema.get("$defs", {}) if definitions is None else definitions
+    if "$ref" in schema:
+        reference = schema["$ref"]
+        if not reference.startswith("#/$defs/") or reference[len("#/$defs/"):] not in definitions:
+            raise ValueError("Unsupported reference in generated response schema")
+        return validate_schema(value, definitions[reference[len("#/$defs/"):]], location, definitions)
     types = {"object": dict, "array": list, "string": str, "integer": int, "null": type(None)}
     expected = schema.get("type")
     if expected:
@@ -219,12 +234,12 @@ def validate_schema(value, schema, location="$"):
             raise ValueError(f"{location}: unexpected keys: {', '.join(sorted(set(value) - set(props)))}")
         for name, child in value.items():
             if name in props:
-                validate_schema(child, props[name], location + "." + name)
+                validate_schema(child, props[name], location + "." + name, definitions)
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             raise ValueError(f"{location}: too few items")
         for index, child in enumerate(value):
-            validate_schema(child, schema.get("items", {}), f"{location}[{index}]")
+            validate_schema(child, schema.get("items", {}), f"{location}[{index}]", definitions)
     if isinstance(value, str):
         if len(value.strip()) < schema.get("minLength", 0):
             raise ValueError(f"{location}: blank/short string")
@@ -272,6 +287,8 @@ def prepare(workspace, selection, field_selection=None, source_selection=None):
     manifest_fields = {}
     for identifier in selected:
         field = copy.deepcopy(entries[identifier])
+        field.pop("depth", None)
+        field.pop("group", None)
         scope = field["scope"]
         instances = [e["id"] for e in registry.values() if e["kind"] == scope]
         if scope == "study":
@@ -366,7 +383,7 @@ def validate_response(payload, manifest):
                     raise ValueError(f"{identifier}: unresolved/inapplicable results require null value and explanation")
                 if status == "not_applicable" and not record["sources"]:
                     raise ValueError(f"{identifier}: proposed inapplicability requires evidence")
-                if status == "conflicting" and len(record["sources"]) < 2:
+                if status == "conflicting" and len({object_hash(s) for s in record["sources"]}) < 2:
                     raise ValueError(f"{identifier}: conflict requires competing source passages")
             for source in record["sources"]:
                 maximum = manifest["sources"][source["document_id"]]["pdf_pages"]
@@ -479,6 +496,23 @@ def review_item(workspace, candidate_id=None, manual=None, action=None, reviewer
         if candidate_id or manual or reviewer or reason or exclude:
             raise ValueError("Supply --accept or --reject for a field decision; bare review generates the report")
         return verification_report(workspace)
+    apply_review_decision(workspace, state, candidate_id, manual, action, reviewer, reason, exclude)
+    save(workspace, state)
+    print(f"Decision recorded; reviewer: {reviewer}")
+    return verification_report(workspace)
+
+
+def apply_review_decision(workspace, state, candidate_id=None, manual=None, action="accept",
+                          reviewer=None, reason="", exclude=False, text=None):
+    """Validate/apply one decision in memory; caller commits state atomically.
+
+    With explicit text, return the canonical edit file and bytes to commit. The UI
+    can validate an entire section before writing any approvals or edit files.
+    The CLI retains its existing on-disk edit-file behavior when text is None.
+    """
+    explicit_text = text is not None
+    if action not in {"accept", "reject"}:
+        raise ValueError("Decision must be accept or reject")
     if not reviewer or not reviewer.strip():
         raise ValueError("Supply --reviewer for an explicit decision")
     if bool(candidate_id) == bool(manual):
@@ -493,7 +527,7 @@ def review_item(workspace, candidate_id=None, manual=None, action=None, reviewer
         candidate = state["candidates"][candidate_id]
         identifier = candidate["field_id"]
         instance = candidate["record"]["instance_id"]
-        path = ensure_edit_file(workspace, candidate)
+        path = candidate_path(workspace, candidate_id) if explicit_text else ensure_edit_file(workspace, candidate)
         requires_reason = exclude or candidate["record"]["status"] != "found"
         manifest = state["requests"][candidate["request_id"]]
         if action == "accept":
@@ -522,23 +556,22 @@ def review_item(workspace, candidate_id=None, manual=None, action=None, reviewer
         problems = source_problems(state)
         if problems:
             raise ValueError("\n".join(problems))
-        text = path.read_text(encoding="utf-8").strip()
+        data = (text + "\n").encode("utf-8") if explicit_text else path.read_bytes()
+        text = data.decode("utf-8").strip()
         if not text or re.search(r"\[\[.*?\]\]|\b(?:TODO|TBD)\b", text, re.I):
             raise ValueError("Fill the editable text file before accepting; placeholders are not accepted")
         include = not exclude and (not candidate or candidate["record"]["status"] != "not_applicable")
         state["reviewed"][reviewed_key] = dict(candidate_id=candidate_id, text=text, include=include,
                                                 reviewer=reviewer, reason=reason, accepted_at=decision["at"],
                                                 edit_path=str(path.relative_to(workspace)),
-                                                edit_sha256=digest(path.read_bytes()))
+                                                edit_sha256=digest(data))
         decision["accepted_text"] = text
         decision["include"] = include
     # Rejecting a new proposal never removes an earlier accepted value.
     if candidate_id:
         state["decisions"][candidate_id] = decision
     state["history"].append(decision)
-    save(workspace, state)
-    print(f"{action.title()}ed {reviewed_key}; reviewer: {reviewer}")
-    return verification_report(workspace)
+    return (path, data) if action == "accept" and explicit_text else None
 
 
 def escape(text):
@@ -574,6 +607,14 @@ def readiness(workspace, state=None, check_summary=True, check_manual=True):
         reviewed_key = key(candidate["field_id"], candidate["record"]["instance_id"])
         if reviewed_key not in state["reviewed"]:
             problems.append(f"Unverified imported item: {reviewed_key}")
+    for reviewed_key, draft in state.get("ui_drafts", {}).items():
+        if not check_summary and reviewed_key.startswith("EXECUTIVE."):
+            continue
+        if not check_manual and draft.get("manual"):
+            continue
+        accepted = state["reviewed"].get(reviewed_key)
+        if not accepted or any(draft[k] != accepted[k] for k in ("candidate_id", "text", "include", "reason")):
+            problems.append(f"Unapproved saved draft: {reviewed_key}")
     return list(dict.fromkeys(problems))
 
 
@@ -677,3 +718,17 @@ def assemble(workspace):
                 lines.extend(["Omitted by reviewer-approved disposition.", ""])
         sections.append("\n".join(lines).strip())
     return config, "\n\n".join(sections) + "\n", issues
+
+
+def accepted_uncertainties(workspace):
+    """Informational accepted limits, separate from unresolved verification blockers."""
+    state = load(workspace)
+    notes = []
+    for reviewed_key, reviewed in state["reviewed"].items():
+        if reviewed["candidate_id"]:
+            status = state["candidates"][reviewed["candidate_id"]]["record"]["status"]
+            if status in {"not_found", "conflicting", "unreadable"}:
+                notes.append(f"{reviewed_key}: reviewer accepted {status}; reason: {reviewed['reason']}")
+        elif re.search(r"\bpending\b|not (?:independently )?(?:performed|verified)|not reproduced", reviewed["text"], re.I):
+            notes.append(f"{reviewed_key}: accepted manual wording: {reviewed['text']}")
+    return notes

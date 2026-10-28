@@ -2,6 +2,8 @@
 
 Stage A retrieves sponsor facts and assembles the memo. It does not identify deficiencies, evaluate methods, independently verify calculations, or write reviewer conclusions. Work from the repository root. Use `python` instead of `python3` if that is your Windows command.
 
+For routine use without terminal commands, start with the [guided local UI](STREAMLIT_UI.md). This page remains the command-line reference and explains the underlying artifacts in more detail.
+
 ## 1. Create a workspace and register sources
 
 ```sh

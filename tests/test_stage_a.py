@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +59,7 @@ def sample_response(manifest):
             if spec["discovers_entities"]:
                 instances = [e["id"] for e in ENTITIES[spec["scope"]]] or ["none"]
             elif spec["scope"] == "interim_look" and not instances:
-                instances = ["none"]
+                instances = [e["id"] for e in ENTITIES["interim_look"]] or ["none"]
         response["fields"][identifier] = []
         for instance in instances:
             sources = [copy.deepcopy(evidence)]
@@ -242,6 +243,56 @@ class StageATests(unittest.TestCase):
     def test_dependency_inventory_required_before_analysis(self):
         with self.assertRaisesRegex(ValueError, "definitions/inventory first"):
             self.prepare("7")
+
+    def test_interim_discovery_covers_each_look_in_same_request(self):
+        looks = [dict(id="LOOK1", kind="interim_look", label="First look"),
+                 dict(id="LOOK2", kind="interim_look", label="Second look")]
+        with patch.dict(ENTITIES, interim_look=looks):
+            manifest = self.prepare("9")
+            payload = sample_response(manifest)
+            self.import_payload(payload)
+            payload["fields"]["INTERIM.TIMING"].pop()
+            with self.assertRaisesRegex(ValueError, "each discovered entity"):
+                self.import_payload(payload)
+
+    def test_conflict_and_inapplicability_require_evidence(self):
+        manifest = self.prepare(fields="DESIGN.POPULATION")
+        payload = sample_response(manifest)
+        item = payload["fields"]["DESIGN.POPULATION"][0]
+        item.update(status="not_applicable", value=None, explanation="Proposed disposition", sources=[])
+        with self.assertRaisesRegex(ValueError, "inapplicability requires evidence"):
+            self.import_payload(payload)
+        item.update(status="conflicting", sources=[dict(document_id="PROTOCOL", pdf_page=1,
+                    printed_page="1", section="1", exact_excerpt="First statement")])
+        item["sources"].append(copy.deepcopy(item["sources"][0]))
+        with self.assertRaisesRegex(ValueError, "competing source passages"):
+            self.import_payload(payload)
+        item["sources"][1]["exact_excerpt"] = "A conflicting second statement"
+        self.import_payload(payload)
+
+    def test_fictional_pilot_fixture_matches_sources_and_approves_nothing(self):
+        import demo_stage_a
+        destination = self.directory / "pilot"
+        quiet(demo_stage_a.create, destination)
+        state = sa.load(destination)
+        self.assertEqual({}, state["reviewed"])
+        self.assertEqual(16, len(state["candidates"]))
+        text = " ".join((destination / "inputs/protocol.md").read_text().split())
+        for candidate in state["candidates"].values():
+            for source in candidate["record"]["sources"]:
+                self.assertIn(" ".join(source["exact_excerpt"].split()), text)
+        self.assertEqual({"O_WEEK24"}, {c["record"]["instance_id"] for c in state["candidates"].values() if c["field_id"] == "OBJECTIVES.OTHER"})
+
+    def test_cli_defaults_to_stage_a_and_does_not_migrate_legacy(self):
+        import subprocess
+        target = self.directory / "cli-review"
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/review.py"), "init", str(target)], capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertTrue(sa.active(target))
+        legacy = self.directory / "legacy"
+        quiet(review.initialize, legacy)
+        self.assertFalse(sa.active(legacy))
+        self.assertFalse((legacy / "stage_a").exists())
 
     def test_source_changes_and_provenance_tampering_detected(self):
         manifest = self.prepare(fields="DESIGN.POPULATION")

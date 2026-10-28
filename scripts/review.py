@@ -131,11 +131,13 @@ def build(args):
     if args.output.suffix.lower() == ".docx":
         build_word(args, markdown)
     write(args.output.with_suffix(".md"), markdown)
+    accepted_notes = stage_a.accepted_uncertainties(args.workspace) if config.get("workflow") == "stage-a" else []
     write(args.output.with_suffix(".checks.txt"),
           ("FINAL: reviewer approval acknowledged.\n" if args.final else "DRAFT: requires reviewer approval.\n") +
           ("Flagged-item disposition explicitly acknowledged.\n" if args.final and args.acknowledge_unresolved else "") +
           "Automated checks do not validate scientific accuracy, evidence completeness, or page layout.\n" +
-          ("Flagged items:\n" + "\n".join(issues) if issues else "No recognized unresolved markers.") + "\n")
+          ("Flagged items:\n" + "\n".join(issues) if issues else "No unresolved verification markers.") + "\n" +
+          ("Reviewer-accepted limits (not automatic verification):\n" + "\n".join(accepted_notes) + "\n" if accepted_notes else ""))
     print(f"Wrote {args.output}; Markdown and check log saved alongside it.")
     if issues:
         print(f"Flagged {len(issues)} item(s); see {args.output.with_suffix('.checks.txt')}")

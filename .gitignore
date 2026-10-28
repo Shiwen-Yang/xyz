@@ -4,3 +4,4 @@ __pycache__/
 # Local submissions, working drafts, and generated reports stay off Git.
 /reviews/
 /output/
+.venv/
