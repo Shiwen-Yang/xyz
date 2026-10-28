@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "catalog_version": 1,
+  "request_id": "q_fixture_replace",
+  "search_scope": "SIMULATED local fixture based on all seven sections of the fictional Markdown protocol, not a real Elsa run. PDF page positions and printed page labels are unavailable for these text sources.",
+  "entities": [
+    {
+      "id": "O_SCORE",
+      "kind": "primary_objective",
+      "label": "Primary objective: week-12 Q score"
+    },
+    {
+      "id": "O_RESPONSE",
+      "kind": "primary_objective",
+      "label": "Primary objective: week-12 Q response"
+    },
+    {
+      "id": "O_WEEK24",
+      "kind": "secondary_objective",
+      "label": "Secondary objective: week-24 Q score"
+    },
+    {
+      "id": "LOW",
+      "kind": "experimental_arm",
+      "label": "Low-dose Product A"
+    },
+    {
+      "id": "HIGH",
+      "kind": "experimental_arm",
+      "label": "High-dose Product A"
+    },
+    {
+      "id": "PLACEBO",
+      "kind": "control_arm",
+      "label": "Placebo"
+    },
+    {
+      "id": "SCORE",
+      "kind": "primary_endpoint",
+      "label": "SCORE: week-12 change"
+    },
+    {
+      "id": "RESPONSE",
+      "kind": "primary_endpoint",
+      "label": "RESPONSE: week-12 response"
+    },
+    {
+      "id": "WEEK24",
+      "kind": "secondary_endpoint",
+      "label": "Week-24 change in Q score"
+    }
+  ],
+  "fields": {
+    "OBJECTIVES.PRIMARY": [
+      {
+        "instance_id": "O_SCORE",
+        "status": "found",
+        "value": "The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "1. Synopsis and objectives",
+            "exact_excerpt": "The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12."
+          }
+        ],
+        "explanation": "The sponsor states both objectives in one combined sentence; that sentence is preserved for each named objective rather than inventing separate wording."
+      },
+      {
+        "instance_id": "O_RESPONSE",
+        "status": "found",
+        "value": "The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "1. Synopsis and objectives",
+            "exact_excerpt": "The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12."
+          }
+        ],
+        "explanation": "The sponsor states both objectives in one combined sentence; that sentence is preserved for each named objective rather than inventing separate wording."
+      }
+    ],
+    "OBJECTIVES.OTHER": [
+      {
+        "instance_id": "O_WEEK24",
+        "status": "found",
+        "value": "The secondary objective compares change in Q score at week 24.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "1. Synopsis and objectives",
+            "exact_excerpt": "The secondary objective compares change in Q score at week 24."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.POPULATION": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "Adults aged 18–65 with imaginary condition Q.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "1. Synopsis and objectives",
+            "exact_excerpt": "This is a phase 2, randomized, double-blind, three-arm study of Fictional Product A in adults aged 18–65 with the imaginary condition Q."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.RANDOMIZATION": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "Randomized 1:1:1, stratified by region.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Randomization is 1:1:1, stratified by region (North/South)."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.ALLOCATION_RATIO": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "Randomization is 1:1:1, stratified by region (North/South).",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Randomization is 1:1:1, stratified by region (North/South)."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.STRATA": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "Region (North/South).",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Randomization is 1:1:1, stratified by region (North/South)."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.BLINDING": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "Subjects, investigators, and outcome assessors are blinded. The dispensing pharmacist has allocation access before database lock.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Subjects, investigators, and outcome assessors are blinded. The dispensing pharmacist has allocation access before database lock."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.ARM.EXPERIMENTAL": [
+      {
+        "instance_id": "LOW",
+        "status": "found",
+        "value": "Product A, 1 unit orally daily for 12 weeks.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Fictional regimens are low-dose Product A (1 unit orally daily), high-dose Product A (2 units orally daily), and matching placebo daily for 12 weeks."
+          }
+        ],
+        "explanation": ""
+      },
+      {
+        "instance_id": "HIGH",
+        "status": "found",
+        "value": "Product A, 2 units orally daily for 12 weeks.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Fictional regimens are low-dose Product A (1 unit orally daily), high-dose Product A (2 units orally daily), and matching placebo daily for 12 weeks."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.ARM.CONTROL": [
+      {
+        "instance_id": "PLACEBO",
+        "status": "found",
+        "value": "Matching placebo daily for 12 weeks.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "Fictional regimens are low-dose Product A (1 unit orally daily), high-dose Product A (2 units orally daily), and matching placebo daily for 12 weeks."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.SITES": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "12 sites: 8 US and 4 Canada. Expected US enrollment percentage is not specified.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "There are 12 sites: 8 in the US and 4 in Canada. The expected US enrollment percentage is not specified."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "DESIGN.OTHER": [
+      {
+        "instance_id": "study",
+        "status": "found",
+        "value": "No additional unusual design feature is planned.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "2. Design",
+            "exact_excerpt": "No additional unusual design feature is planned."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "ENDPOINTS.PRIMARY": [
+      {
+        "instance_id": "SCORE",
+        "status": "found",
+        "value": "Primary endpoint SCORE is baseline-to-week-12 change in Q score, calculated as week-12 score minus baseline score; higher scores are better.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "3. Endpoints and hypotheses",
+            "exact_excerpt": "Primary endpoint SCORE is baseline-to-week-12 change in Q score, calculated as week-12 score minus baseline score; higher scores are better."
+          }
+        ],
+        "explanation": ""
+      },
+      {
+        "instance_id": "RESPONSE",
+        "status": "found",
+        "value": "Primary endpoint RESPONSE is an increase of at least 5 Q-score points from baseline at week 12.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "3. Endpoints and hypotheses",
+            "exact_excerpt": "Primary endpoint RESPONSE is an increase of at least 5 Q-score points from baseline at week 12."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "ENDPOINTS.SECONDARY": [
+      {
+        "instance_id": "WEEK24",
+        "status": "found",
+        "value": "The secondary endpoint is baseline-to-week-24 change in Q score.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "3. Endpoints and hypotheses",
+            "exact_excerpt": "The secondary endpoint is baseline-to-week-24 change in Q score."
+          }
+        ],
+        "explanation": ""
+      }
+    ]
+  }
+}

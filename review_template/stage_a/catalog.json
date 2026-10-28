@@ -1,0 +1,760 @@
+{
+  "catalog_version": 1,
+  "sections": [
+    {
+      "number": 1,
+      "file": "01_executive_summary.md",
+      "title": "Executive Summary:",
+      "source_tex": "content/1_executive_summary.tex",
+      "fields": [
+        {
+          "id": "EXECUTIVE.FACTS",
+          "label": "Factual summary",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol",
+          "instructions": "Summarize only the supplied accepted facts. Cover design, population, interventions, sample size, primary endpoints, and interim plans. Do not add assessments, concerns, conclusions, or new facts. Cite the original sources supplied with those facts."
+        },
+        {
+          "id": "EXECUTIVE.ASSESSMENT",
+          "label": "Reviewer assessment",
+          "depth": 0,
+          "group": false,
+          "mode": "manual",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol",
+          "instructions": "Reviewer's assessment and conclusions; never request this from Elsa."
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 2,
+      "file": "02_background.md",
+      "title": "Background:",
+      "source_tex": "content/2_background.tex",
+      "fields": [
+        {
+          "id": "BACKGROUND.SUBMISSION",
+          "label": "Submission description",
+          "instructions": "Describe the submission and current protocol identifier, version, and date as supplied.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "supplied_documents"
+        },
+        {
+          "id": "BACKGROUND.PRODUCT",
+          "label": "Product information",
+          "instructions": "Summarize relevant sponsor-provided product background from the registered documents.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "supplied_documents"
+        },
+        {
+          "id": "BACKGROUND.HISTORY",
+          "label": "Relevant review history and agreements",
+          "instructions": "Summarize documented previous reviews, agreements, meetings, and regulatory events from supplied sources. Do not infer history from silence in the protocol.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "supplied_documents"
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 3,
+      "file": "03_primary_objectives.md",
+      "title": "Primary Objective(s):",
+      "source_tex": "content/3_primary_objectives.tex",
+      "fields": [
+        {
+          "id": "OBJECTIVES.PRIMARY",
+          "label": "Primary objectives",
+          "instructions": "Extract each primary objective verbatim. Exclude all secondary and exploratory objectives from this field.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "primary_objective",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OBJECTIVES.OTHER",
+          "label": "Secondary objectives",
+          "instructions": "Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "secondary_objective",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 4,
+      "file": "04_design_features.md",
+      "title": "Design Features:",
+      "source_tex": "content/4_design_features.tex",
+      "fields": [
+        {
+          "id": "DESIGN.POPULATION",
+          "label": "Study population",
+          "instructions": "Summarize the target population and important eligibility boundaries, including age and disease status as stated.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.RANDOMIZATION",
+          "label": "Treatment Allocation and Randomization",
+          "instructions": "Summarize the sponsor's treatment-assignment procedure, including randomized, concurrent-control, minimization, or single-arm design.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.ALLOCATION_RATIO",
+          "label": "allocation ratio",
+          "instructions": "Quote the allocation ratio and its named arms exactly. Do not infer a ratio from sample sizes.",
+          "depth": 1,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.STRATA",
+          "label": "stratification factors",
+          "instructions": "List stated randomization stratification factors and categories; distinguish these from analysis covariates.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.BLINDING",
+          "label": "Blinding",
+          "instructions": "State who is blinded and who can access allocation before database lock. Do not equate open label with an absence of blinded assessment.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.ARMS",
+          "label": "Treatment Arms",
+          "instructions": "Structural label; not an extraction field.",
+          "depth": 0,
+          "group": true,
+          "mode": "group",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.ARM.EXPERIMENTAL",
+          "label": "experimental",
+          "instructions": "Summarize every experimental arm, including intervention, dose, route, and schedule where stated. Include the intervention in a single-arm study.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "experimental_arm",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.ARM.CONTROL",
+          "label": "control",
+          "instructions": "Summarize every control/comparator arm and its regimen where stated.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "control_arm",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.SITES",
+          "label": "Site(s)",
+          "instructions": "Summarize site counts and countries/regions, and US enrollment percentage if stated. Do not infer subject proportions from site counts.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "DESIGN.OTHER",
+          "label": "Other features",
+          "instructions": "Summarize explicitly stated additional design features such as manufacturing delays or lot-consistency requirements. Do not evaluate adequacy or identify deficiencies.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 5,
+      "file": "05_endpoints.md",
+      "title": "Endpoints:",
+      "source_tex": "content/5_endpoints.tex",
+      "fields": [
+        {
+          "id": "ENDPOINTS.PRIMARY",
+          "label": "Primary",
+          "instructions": "Extract each primary endpoint's complete definition verbatim, including time windows, event/response definitions, and derivation rules wherever specified. Exclude secondary endpoints.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "primary_endpoint",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "ENDPOINTS.SECONDARY",
+          "label": "Secondary",
+          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "secondary_endpoint",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 6,
+      "file": "06_statistical_hypothesis.md",
+      "title": "Statistical Hypothesis:",
+      "source_tex": "content/6_statistical_hypothesis.tex",
+      "fields": [
+        {
+          "id": "HYPOTHESIS.STATEMENT",
+          "label": "Hypotheses and parameters",
+          "instructions": "Quote formal hypotheses and parameter definitions for the named primary endpoint. Retain comparison direction and named arms. Do not construct a hypothesis if none is stated.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "HYPOTHESIS.MARGIN",
+          "label": "Non-inferiority/equivalence margin",
+          "instructions": "Quote applicable non-inferiority/equivalence margins and the sponsor's stated justification for the named primary endpoint. Do not evaluate the justification.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "HYPOTHESIS.SUCCESS",
+          "label": "Study success criterion",
+          "instructions": "Quote the sponsor's success criteria for the named primary endpoint and its role in overall study success, including joint requirements and testing order.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 7,
+      "file": "07_analyses_for_primary_endpoints.md",
+      "title": "Analyses for Primary Endpoint(s):",
+      "source_tex": "content/7_analyses_for_primary_endpoints.tex",
+      "fields": [
+        {
+          "id": "PRIMARY_ANALYSIS.PRIMARY",
+          "label": "Primary analysis",
+          "instructions": "Structural label; not an extraction field.",
+          "depth": 0,
+          "group": true,
+          "mode": "group",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.METHOD",
+          "label": "statistical method",
+          "instructions": "Summarize the specified statistical method for this named endpoint, retaining named arms/comparisons and estimand details if supplied.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.COVARIATES",
+          "label": "covariates or strata",
+          "instructions": "List analysis covariates/strata for this named endpoint; distinguish them from randomization strata.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.SET",
+          "label": "analysis set",
+          "instructions": "Describe the sponsor's analysis-set membership and treatment-assignment rules for this endpoint, not just its acronym. Include any sponsor-supplied rationale; do not request or judge justification.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.MISSING",
+          "label": "missing data handling",
+          "instructions": "Summarize missing-data and censoring rules/time points for this endpoint. Keep the main analysis distinct from sensitivity procedures.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.ALPHA",
+          "label": "α-level",
+          "instructions": "State alpha, sidedness and sponsor-described multiplicity/gatekeeping procedures for this endpoint, including its relation to other endpoints and interim testing.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.SENSITIVITY",
+          "label": "Sensitivity/supportive",
+          "instructions": "Summarize sponsor-planned sensitivity/supportive methods, populations and missing-data approaches for this endpoint.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "PRIMARY_ANALYSIS.SUBGROUP",
+          "label": "Subgroup analysis",
+          "instructions": "Summarize sponsor-planned subgroup analyses for this endpoint. Do not add subgroup requirements or reviewer recommendations.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "primary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 8,
+      "file": "08_analyses_for_other_important_endpoints.md",
+      "title": "Analyses for Other Important Endpoint(s):",
+      "source_tex": "content/8_analyses_for_other_important_endpoints.tex",
+      "fields": [
+        {
+          "id": "OTHER_ANALYSIS.PRIMARY",
+          "label": "Primary analysis",
+          "instructions": "Structural label; not an extraction field.",
+          "depth": 0,
+          "group": true,
+          "mode": "group",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.METHOD",
+          "label": "statistical method",
+          "instructions": "Summarize the specified statistical method for this named endpoint, retaining named arms/comparisons and estimand details if supplied.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.COVARIATES",
+          "label": "covariates or strata",
+          "instructions": "List analysis covariates/strata for this named endpoint; distinguish them from randomization strata.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.SET",
+          "label": "analysis set",
+          "instructions": "Describe the sponsor's analysis-set membership and treatment-assignment rules for this endpoint, not just its acronym. Include any sponsor-supplied rationale; do not request or judge justification.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.MISSING",
+          "label": "missing data handling",
+          "instructions": "Summarize missing-data and censoring rules/time points for this endpoint. Keep the main analysis distinct from sensitivity procedures.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.ALPHA",
+          "label": "α-level",
+          "instructions": "State alpha, sidedness and sponsor-described multiplicity/gatekeeping procedures for this endpoint, including its relation to other endpoints and interim testing.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.SENSITIVITY",
+          "label": "Sensitivity/supportive",
+          "instructions": "Summarize sponsor-planned sensitivity/supportive methods, populations and missing-data approaches for this endpoint.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OTHER_ANALYSIS.SUBGROUP",
+          "label": "Subgroup analysis",
+          "instructions": "Summarize sponsor-planned subgroup analyses for this endpoint. Do not add subgroup requirements or reviewer recommendations.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "secondary_endpoint",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 9,
+      "file": "09_interim_analyses.md",
+      "title": "Interim Analyses:",
+      "source_tex": "content/9_interim_analyses.tex",
+      "fields": [
+        {
+          "id": "INTERIM.PLAN",
+          "label": "Interim analysis plan",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol",
+          "instructions": "Summarize whether interim efficacy, futility, safety analyses or sample-size re-estimation are explicitly planned. Distinguish absence of a plan from inability to locate it. Explicit no-interim statements are found facts."
+        },
+        {
+          "id": "INTERIM.ADAPTIVE",
+          "label": "Adaptive features",
+          "instructions": "Summarize sponsor-described adaptive features; do not judge their appropriateness.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "INTERIM.LOOKS",
+          "label": "Number of interim looks",
+          "instructions": "State the number and purpose of planned interim looks, distinguishing scheduled testing from other monitoring.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "INTERIM.METHOD",
+          "label": "Statistical method/approach",
+          "instructions": "Summarize the method specified for this named interim look, retaining cited method names/references as supplied.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "interim_look",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "INTERIM.TIMING",
+          "label": "Timing and boundaries at each look",
+          "instructions": "Summarize timing/information fraction, event counts, boundaries, alpha spending, and binding/nonbinding rules for this named look. Do not assess safety adequacy.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "interim_look",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "INTERIM.OPERATING",
+          "label": "Operating characteristics",
+          "instructions": "Summarize supplied stopping/continuation probabilities and their stated scenarios for this look; do not compute missing values.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "interim_look",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 10,
+      "file": "10_sample_size_estimation.md",
+      "title": "Sample Size Estimation:",
+      "source_tex": "content/10_sample_size_estimation.tex",
+      "fields": [
+        {
+          "id": "SAMPLE_SIZE.SUBJECTS",
+          "label": "Number of subjects to be accrued/evaluated",
+          "instructions": "State planned total and per-arm accrual and expected evaluable subjects, keeping endpoints/calculation scenarios explicit. Include medical/regulatory sizing reasons if stated.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.ALPHA",
+          "label": "Type-I error rate (one or two-sided)",
+          "instructions": "State sponsor-reported sizing alpha and sidedness, with endpoint/scenario associations.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.POWER",
+          "label": "Power",
+          "instructions": "State sponsor-reported target or achieved power, with endpoint/scenario associations. Do not verify or compute power.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.ASSUMPTIONS",
+          "label": "Assumed values in the estimation",
+          "instructions": "Structural label; not an extraction field.",
+          "depth": 0,
+          "group": true,
+          "mode": "group",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.EFFECT",
+          "label": "Treatment effect size",
+          "instructions": "Summarize sponsor-assumed effect sizes and arm-specific values, naming each endpoint/scenario. Keep assumed true differences distinct from margins.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.SD",
+          "label": "Standard deviation",
+          "instructions": "State sponsor-assumed standard deviations for named continuous endpoints/scenarios.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.DROPOUT",
+          "label": "Dropout/missing rate",
+          "instructions": "State sponsor-assumed dropout/missingness and how it enters each named sizing scenario.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.OTHER",
+          "label": "Others",
+          "instructions": "Summarize other stated sizing assumptions, including overdispersion, accrual and follow-up. Do not invent missing inputs.",
+          "depth": 1,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.RATIONALE",
+          "label": "Rationale provided for assumed values",
+          "instructions": "Summarize only the sponsor's supplied rationale/evidence for sizing assumptions. Do not supply a justification or evaluate adequacy.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.EVENTS",
+          "label": "Number of events required to stop/complete the trial",
+          "instructions": "State required event counts by endpoint/scenario and distinguish final from interim targets.",
+          "depth": 0,
+          "group": false,
+          "mode": "summary",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "SAMPLE_SIZE.VERIFICATION",
+          "label": "Calculation verification",
+          "instructions": "Independent reviewer verification; manual only. Elsa's sponsor-reported calculation cannot populate this field.",
+          "depth": 0,
+          "group": false,
+          "mode": "manual",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": false
+    },
+    {
+      "number": 11,
+      "file": "11_other_aspects.md",
+      "title": "Other Aspects:",
+      "source_tex": "content/11_other_aspects.tex",
+      "fields": [
+        {
+          "id": "OTHER.ISSUES",
+          "label": "Other important issues",
+          "instructions": "Reviewer assessment of other important issues; manual only.",
+          "depth": 0,
+          "group": false,
+          "mode": "manual",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 12,
+      "file": "12_comments_to_review_team.md",
+      "title": "Comments to CBER Review Team:",
+      "source_tex": "content/12_comments_to_review_team.tex",
+      "fields": [
+        {
+          "id": "TEAM.COMMENTS",
+          "label": "Review-team comments",
+          "instructions": "Reviewer-authored internal comments; manual only.",
+          "depth": 0,
+          "group": false,
+          "mode": "manual",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": true
+    },
+    {
+      "number": 13,
+      "file": "13_comments_and_questions_to_sponsor.md",
+      "title": "Comments and Questions to Sponsor:",
+      "source_tex": "content/13_comments_and_questions_to_sponsor.tex",
+      "fields": [
+        {
+          "id": "SPONSOR.COMMENTS",
+          "label": "Sponsor comments and questions",
+          "instructions": "Reviewer-authored sponsor comments; manual only.",
+          "depth": 0,
+          "group": false,
+          "mode": "manual",
+          "scope": "study",
+          "discovers_entities": false,
+          "source_scope": "protocol"
+        }
+      ],
+      "prose": true
+    }
+  ]
+}
