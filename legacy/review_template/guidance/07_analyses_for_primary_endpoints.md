@@ -1,6 +1,6 @@
 # Instructions: Analyses for Primary Endpoint(s):
 
-Original source: `content/7_analyses_for_primary_endpoints.tex`.
+Original source: `legacy/tex/content/7_analyses_for_primary_endpoints.tex`.
 
 Repeat the complete analysis block under a named ## endpoint heading for every primary endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. PRIMARY_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.
 

@@ -1,6 +1,6 @@
 # Instructions: Statistical Hypothesis:
 
-Original source: `content/6_statistical_hypothesis.tex`.
+Original source: `legacy/tex/content/6_statistical_hypothesis.tex`.
 
 State explicit hypotheses and define every parameter, treatment direction, and margin. If the protocol gives no formal hypothesis, report that it was not located rather than constructing one without labeling it as reviewer interpretation.
 

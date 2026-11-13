@@ -3,11 +3,13 @@
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / "review_template"
+REPO = Path(__file__).resolve().parents[2]
+ROOT = REPO / "legacy" / "review_template"   # output: blank sections + guidance
+SECTIONS = REPO / "review_template" / "sections.json"
 
 
 def refresh():
-    sections = json.loads((ROOT / "sections.json").read_text(encoding="utf-8"))
+    sections = json.loads((SECTIONS).read_text(encoding="utf-8"))
     for section in sections:
         report = ["# " + section["title"], ""]
         guidance = ["# Instructions: " + section["title"], "",

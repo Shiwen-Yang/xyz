@@ -1,6 +1,6 @@
 # Instructions: Executive Summary:
 
-Original source: `content/1_executive_summary.tex`.
+Original source: `legacy/tex/content/1_executive_summary.tex`.
 
 Draft last, using the approved report and approved concerns. Write a short abstract of salient protocol features, major issues, and important requests. Do not introduce new findings.
 

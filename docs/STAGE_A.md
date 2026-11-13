@@ -1,6 +1,6 @@
 # Stage A walkthrough
 
-Stage A retrieves sponsor facts and assembles the memo. It does not identify deficiencies, evaluate methods, independently verify calculations, or write reviewer conclusions. Work from the repository root. Use `python` instead of `python3` if that is your Windows command.
+Stage A retrieves sponsor facts and assembles the memo. It does not identify deficiencies, evaluate methods, independently verify calculations, or write reviewer conclusions. Work from the repository root, using the `.venv` Python (`.venv/bin/python`) or any Python 3.10+ for the CLI, which needs no extra packages.
 
 For routine use without terminal commands, start with the [guided local UI](STREAMLIT_UI.md). This page remains the command-line reference and explains the underlying artifacts in more detail.
 
@@ -121,8 +121,8 @@ Values are escaped as plain text: imported markup cannot create headings, images
 
 ## Maintenance and compatibility
 
-Existing reviews without `workflow: "stage-a"` use the original section-based behavior. New legacy workspaces use `init ... --workflow legacy`; [the legacy guide](LEGACY_WORKFLOW.md) covers that path. `bundle` rejects Stage A workspaces so evaluative legacy prompts are not mixed in accidentally. Original TeX files remain unchanged.
+The original section-based workflow, its templates, and the original TeX memo are archived under `legacy/`; see [legacy/README.md](../legacy/README.md). `scripts/review.py` handles Stage A workspaces only, so evaluative legacy prompts cannot be mixed in accidentally. Workspaces without `workflow: "stage-a"` are not opened by the CLI or UI.
 
-Regenerate the Stage A catalog/field guide with `python3 scripts/make_stage_a_catalog.py` after updating its explicit retrieval-only rules or the underlying section structure. Existing workspaces retain their catalog snapshot; there is no automatic migration. Legacy templates still use `scripts/refresh_templates.py`.
+Regenerate the Stage A catalog/field guide with `python3 scripts/make_stage_a_catalog.py` after updating its explicit retrieval-only rules or the underlying section structure (`review_template/sections.json`). Existing workspaces retain their catalog snapshot; there is no automatic migration.
 
 Run `python3 -m unittest discover -s tests -v`. Set environment variable `PANDOC` to a binary path for Word integration tests if necessary; otherwise those cases skip. These tests do not call Elsa or measure its retrieval accuracy. Generated Word structure is checked, but visual layout needs manual Word inspection or a LibreOffice rendering environment.

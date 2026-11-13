@@ -1,6 +1,6 @@
 # Instructions: Analyses for Other Important Endpoint(s):
 
-Original source: `content/8_analyses_for_other_important_endpoints.tex`.
+Original source: `legacy/tex/content/8_analyses_for_other_important_endpoints.tex`.
 
 Repeat the complete analysis block under a named ## endpoint heading for every other statistically important endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. OTHER_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.
 

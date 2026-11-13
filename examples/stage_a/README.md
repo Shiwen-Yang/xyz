@@ -1,6 +1,6 @@
 # Fictional Stage A pilot
 
-This example exercises **local preparation, import, field verification and report assembly**. The JSON fixture is simulated; it is not an Elsa test result and is not a scientific recommendation. Its source documents are the fictional Markdown protocol/background in `../synthetic_review/`. Page references are null because these are text sources.
+This example exercises **local preparation, import, field verification and report assembly**. The JSON fixture is simulated; it is not an Elsa test result and is not a scientific recommendation. Its source documents are the fictional Markdown protocol/background in `sources/`. Page references are null because these are text sources.
 
 Run from the repository root:
 

@@ -83,7 +83,7 @@ class StageATests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
         self.workspace = self.directory / "workspace"
-        quiet(review.initialize, self.workspace, "stage-a")
+        quiet(review.initialize, self.workspace)
         self.source = self.directory / "protocol.txt"
         self.source.write_text("This is entirely fictional protocol text for a software test.\n")
         quiet(sa.register_source, self.workspace, self.source, "PROTOCOL", "protocol", "1.0", "2026-01-15", 20)
@@ -283,16 +283,18 @@ class StageATests(unittest.TestCase):
                 self.assertIn(" ".join(source["exact_excerpt"].split()), text)
         self.assertEqual({"O_WEEK24"}, {c["record"]["instance_id"] for c in state["candidates"].values() if c["field_id"] == "OBJECTIVES.OTHER"})
 
-    def test_cli_defaults_to_stage_a_and_does_not_migrate_legacy(self):
+    def test_cli_init_creates_stage_a_workspace(self):
         import subprocess
         target = self.directory / "cli-review"
         result = subprocess.run([sys.executable, str(ROOT / "scripts/review.py"), "init", str(target)], capture_output=True, text=True)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertTrue(sa.active(target))
+        self.assertTrue((target / "stage_a").is_dir())
         legacy = self.directory / "legacy"
-        quiet(review.initialize, legacy)
-        self.assertFalse(sa.active(legacy))
-        self.assertFalse((legacy / "stage_a").exists())
+        legacy.mkdir()
+        (legacy / "review.json").write_text('{"title": "t", "author": "a", "date": "", "submission": "s"}')
+        with self.assertRaisesRegex(ValueError, "legacy workflow"):
+            review.assemble(legacy)
 
     def test_source_changes_and_provenance_tampering_detected(self):
         manifest = self.prepare(fields="DESIGN.POPULATION")

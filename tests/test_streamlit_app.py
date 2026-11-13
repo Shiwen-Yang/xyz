@@ -53,7 +53,7 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Create review").click().run()
         self.assert_clean(app)
         workspace = Path(app.session_state["workspace"])
-        pdf = (ROOT / "review_report.pdf").read_bytes()
+        pdf = (ROOT / "tests/fixtures/sample.pdf").read_bytes()
         app.file_uploader[0].set_value(("protocol.pdf", pdf, "application/pdf"))
         self.button(app, "Save documents").click().run()
         self.assert_clean(app)
@@ -100,7 +100,7 @@ class StreamlitTests(unittest.TestCase):
 
     def test_pdf_panel_receives_the_cited_page_and_local_pdf(self):
         workspace = ui.create_review("PDF panel", "Reviewer")
-        pdf = (ROOT / "review_report.pdf").read_bytes()
+        pdf = (ROOT / "tests/fixtures/sample.pdf").read_bytes()
         ui.store_source(workspace, "protocol.pdf", pdf, "protocol")
         request_id = ui.create_request(workspace, 0)
         payload = sa.read_json(ROOT / "examples/stage_a/elsa_pilot_response.json")

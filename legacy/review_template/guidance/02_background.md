@@ -1,6 +1,6 @@
 # Instructions: Background:
 
-Original source: `content/2_background.tex`.
+Original source: `legacy/tex/content/2_background.tex`.
 
 Use the protocol plus separately identified background sources. Prior regulatory history may require correspondence or reviewer input; its absence from the protocol does not establish that no agreement exists.
 

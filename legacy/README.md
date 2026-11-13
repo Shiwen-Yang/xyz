@@ -1,8 +1,10 @@
 # Legacy Markdown review workflow
 
-Prepare a statistical-review memo with an approved work chatbot, then assemble an editable Word report locally. The Markdown templates preserve the 13 sections in `review_report.tex`; the existing TeX and PDF remain unchanged.
+> **Archived.** This is the original section-based workflow, superseded by Stage A (see the repository README). Everything for it lives under `legacy/`: `scripts/review_legacy.py` (CLI), `review_template/` (guidance, prompts, blank sections), `examples/synthetic_review/`, `tex/` (original LaTeX memo), `tests/`, and `windows/` (Windows launchers for the UI). Shared files (`review_template/sections.json`, `reference.docx`, `STYLE.md`, `reviewer_checks.md`, `scripts/word_style.py`) stay in the main tree. The active CLI/UI do not open legacy workspaces.
 
-This guide describes the original section-editing workflow. Existing workspaces remain unchanged. New JSON-based Elsa reviews use Stage A, documented in the repository README. Run all commands below from the repository root.
+Prepare a statistical-review memo with an approved work chatbot, then assemble an editable Word report locally. The Markdown templates preserve the 13 sections in `review_report.tex`; the original TeX and PDF are preserved in `legacy/tex/`.
+
+Run all commands below from the repository root.
 
 ## Start here
 
@@ -11,34 +13,34 @@ You need **Python 3.9+** and **Pandoc** on the computer that builds Word files. 
 From this repository's folder:
 
 ```sh
-python3 scripts/review.py init reviews/my-review --workflow legacy
+python3 legacy/scripts/review_legacy.py init reviews/my-review
 ```
 
 This creates a local working folder with `sections/`, `documents.md`, `evidence.md`, `issues.md`, `reviewer_checks.md`, and `review.json`. It refuses to overwrite an existing folder. `reviews/` and `output/` are Git-ignored so submissions and working reports placed there are not added accidentally; do not put proprietary inputs in the reusable template or synthetic example folders.
 
 1. Fill in `reviews/my-review/documents.md`: identify the current main protocol and each background source by version/date and role. Fill the report title/author/date/submission in `review.json` (a blank date is allowed).
-2. Start a chat in the tool approved for your work material. Supply `review_template/instructions.md`, the source register, the main PDF, relevant background PDFs, and `review_template/prompts/01_intake.md`. Review the document map and access limitations it returns.
+2. Start a chat in the tool approved for your work material. Supply `legacy/review_template/instructions.md`, the source register, the main PDF, relevant background PDFs, and `legacy/review_template/prompts/01_intake.md`. Review the document map and access limitations it returns.
 3. Package a small extraction batch:
 
    ```sh
-   python3 scripts/review.py bundle reviews/my-review --sections 3,4,5 --output reviews/my-review/chat-batch.md
+   python3 legacy/scripts/review_legacy.py bundle reviews/my-review --sections 3,4,5 --output reviews/my-review/chat-batch.md
    ```
 
    Upload or paste `chat-batch.md` into that chat. It includes the general instructions, source register, selected field guidance, current section drafts, and extraction prompt. The PDFs must also be accessible in the chat; the bundle does not attach them. If Markdown upload is unavailable, paste its contents. Reduce the batch size if context is limited.
 4. Save each returned **REPORT DRAFT block's contents** into its named file under `reviews/my-review/sections/`. Do not save the surrounding chat/code fences. Append **EVIDENCE LOG ADDITIONS** to `evidence.md` and candidate concerns to `issues.md`. Check sources before approving answers.
-5. Repeat with sections `6,7,8,9,10`, then `2,11`; split large batches as needed. Use `prompts/03_review_issues.md` with the draft and logs to review candidate concerns. Supply your decisions, then request sections `12,13` and finally `1`. Supply their guidance from `review_template/guidance/` or use another bundle.
-6. Run `prompts/04_consistency_check.md` with the assembled draft, evidence log, and accessible sources. Use `prompts/05_handoff.md` if starting a fresh chat; reattach the needed documents.
+5. Repeat with sections `6,7,8,9,10`, then `2,11`; split large batches as needed. Use `legacy/review_template/prompts/03_review_issues.md` with the draft and logs to review candidate concerns. Supply your decisions, then request sections `12,13` and finally `1`. Supply their guidance from `legacy/review_template/guidance/` or use another bundle.
+6. Run `legacy/review_template/prompts/04_consistency_check.md` with the assembled draft, evidence log, and accessible sources. Use `legacy/review_template/prompts/05_handoff.md` if starting a fresh chat; reattach the needed documents.
 7. Build a draft and inspect all pages in Word:
 
    ```sh
-   python3 scripts/review.py build reviews/my-review --output output/my-review-draft.docx
+   python3 legacy/scripts/review_legacy.py build reviews/my-review --output output/my-review-draft.docx
    ```
 
    The build also saves the assembled `.md` for the consistency-check prompt and a `.checks.txt` list of recognized unresolved markers. Only the 13 section files and report metadata enter the report; guidance and logs stay separate.
 8. Complete `reviewer_checks.md`, resolve all placeholders, and export:
 
    ```sh
-   python3 scripts/review.py build reviews/my-review --output output/my-review-final.docx --final --reviewer-approved
+   python3 legacy/scripts/review_legacy.py build reviews/my-review --output output/my-review-final.docx --final --reviewer-approved
    ```
 
    If a reviewed status such as “Not located” legitimately remains, record its disposition and add `--acknowledge-unresolved`. This cannot bypass unfilled `[[...]]`, TODO, or TBD placeholders. The approval flag records your acknowledgment; it does not validate evidence, interpret the checklist, or independently verify calculations. Check the final Word file too.
@@ -81,17 +83,17 @@ The reference document controls styles and page setup, with local normalization 
 
 ## Synthetic example and verification
 
-`examples/synthetic_review/` contains fictional protocol/background text, a completed draft, and evidence/issue logs. Its source documents are Markdown; it tests local assembly rather than chatbot PDF retrieval. `examples/synthetic_review/example_report.docx` demonstrates nested bullets, three arms, multiple endpoints, a table, and editable math. It is a formatting/workflow example, not a scientific recommendation or independent sample-size verification.
+`legacy/examples/synthetic_review/` contains a completed draft and evidence/issue logs for the fictional study whose protocol and background text now live in `examples/stage_a/sources/`. It tests local assembly rather than chatbot PDF retrieval. `legacy/examples/synthetic_review/example_report.docx` demonstrates nested bullets, three arms, multiple endpoints, a table, and editable math. It is a formatting/workflow example, not a scientific recommendation or independent sample-size verification.
 
 The supplied Word files were structurally checked with Pandoc 3.12.1. LibreOffice was unavailable here, so rendered page QA could not be completed; open them in Word and inspect every page before adopting the layout.
 
 To run the checks:
 
 ```sh
-python3 -m unittest discover -s tests -v
-python3 scripts/review.py build examples/synthetic_review --output output/synthetic-draft.docx
+python3 -m unittest discover -s legacy/tests -v
+python3 legacy/scripts/review_legacy.py build legacy/examples/synthetic_review --output output/synthetic-draft.docx
 ```
 
 Set `PANDOC` to an executable path for the integration tests if it is not on PATH. Builds accept `--pandoc /path/to/pandoc`. Tests skip only the Word conversion cases when Pandoc is unavailable; text validation still runs.
 
-To maintain the reusable template, edit `review_template/sections.json` (field definitions and rules) and run `python3 scripts/refresh_templates.py` to regenerate blank sections and guidance. Do not edit generated guidance in isolation. To rebuild the Word reference, run `python3 scripts/make_reference.py`. The original TeX is preserved as historical reference; Markdown is the working master.
+To maintain the reusable template, edit `review_template/sections.json` (field definitions and rules; also the source for the Stage A catalog) and run `python3 legacy/scripts/refresh_templates.py` to regenerate the blank sections and guidance under `legacy/review_template/`. Do not edit generated guidance in isolation. To rebuild the Word reference, run `python3 scripts/make_reference.py`. The original TeX in `legacy/tex/` is preserved as historical reference; Markdown is the working master.

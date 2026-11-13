@@ -1,6 +1,6 @@
 # Instructions: Endpoints:
 
-Original source: `content/5_endpoints.tex`.
+Original source: `legacy/tex/content/5_endpoints.tex`.
 
 Provide a detailed definition for every included endpoint. Repeat named endpoint subsections or labeled paragraphs as needed. Separate efficacy and safety if useful. Preserve measurement, assessment window/time origin, event definition, and derivation details that are stated; do not invent missing components.
 

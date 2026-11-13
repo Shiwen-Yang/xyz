@@ -1,6 +1,6 @@
 # Instructions: Primary Objective(s):
 
-Original source: `content/3_primary_objectives.tex`.
+Original source: `legacy/tex/content/3_primary_objectives.tex`.
 
 Describe primary objectives. Include secondary/key secondary objectives only when statistically important to this review.
 

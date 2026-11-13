@@ -1,6 +1,6 @@
 # Instructions: Sample Size Estimation:
 
-Original source: `content/10_sample_size_estimation.tex`.
+Original source: `legacy/tex/content/10_sample_size_estimation.tex`.
 
 List planned accrual and expected primary-analysis contributors. If sizing is based on medical/regulatory considerations instead of power, explain that basis in the first bullet and omit the remaining calculation bullets; preserve any reviewer assessment of safety-sizing parameters in that explanation. Keep sponsor calculations separate from independent reviewer verification.
 

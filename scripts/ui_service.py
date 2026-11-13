@@ -56,7 +56,7 @@ def create_review(name, reviewer, demo=False):
     if demo:
         quiet(demo_stage_a.create, path)
     else:
-        quiet(review.initialize, path, "stage-a")
+        quiet(review.initialize, path)
     config = sa.read_json(path / "review.json")
     config.update(ui_name=name.strip(), ui_reviewer=reviewer.strip(), submission=name.strip())
     sa.write_json(path / "review.json", config)

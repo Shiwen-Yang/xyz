@@ -2,12 +2,15 @@
 
 A guided, local workflow for using Elsa to retrieve protocol facts, verify every answer against its source, and generate an editable statistical review memo. Statistical evaluation, deficiencies, independent calculation checks, and reviewer conclusions remain the reviewer's responsibility.
 
-## Start on a Windows work computer
+## Start on Linux or WSL
 
-1. Copy or clone this whole folder to the computer.
-2. Double-click **`setup_ui.bat`** once. It creates an isolated `.venv` and installs the two direct UI packages in `requirements-ui.txt` plus their required dependencies.
-3. Double-click **`start_ui.bat`** whenever you want to work. Your browser opens the app at `http://127.0.0.1:8501`.
-4. Keep the terminal window open while using the app. Closing it stops the local app; saved work remains under `reviews/`.
+Needs Python 3.10+ (with `python3-venv` on Ubuntu/Debian: `sudo apt install python3-venv`). Keep the project on the Linux filesystem (e.g. under `~`), not under `/mnt/c`.
+
+1. Run `./setup_ui.sh` once. It creates an isolated `.venv` and installs the two direct UI packages in `requirements-ui.txt` plus their required dependencies.
+2. Run `./start_ui.sh` whenever you want to work. It serves the app at `http://127.0.0.1:8501` and tries to open your browser. In WSL2 that address is forwarded to your Windows browser; if no browser opens, visit it manually (`sudo apt install wslu` lets the launcher open the Windows browser itself).
+3. Keep the terminal open while using the app; Ctrl+C stops it. Saved work remains under `reviews/`.
+
+Windows launchers (`.bat`) are kept in `legacy/windows/`.
 
 The app has four screens:
 
@@ -33,11 +36,11 @@ The software can validate structure and provenance, but it cannot establish quot
 
 ## Pandoc and Word output
 
-Pandoc is needed only for `.docx` output. Set up, Elsa exchange, review, saved drafts, and Markdown export work without it. If Pandoc is installed in a nonstandard location, enter its executable path once under **Export → Word settings**.
+Pandoc is needed only for `.docx` output (`sudo apt install pandoc` in WSL). Set up, Elsa exchange, review, saved drafts, and Markdown export work without it. If Pandoc is installed in a nonstandard location, enter its executable path once under **Export → Word settings**.
 
 ## Command-line workflow
 
-The existing CLI remains available for advanced use and automation; the UI and CLI use the same review workspaces. See the [Stage A command reference](docs/STAGE_A.md). Existing section-based reviews are not migrated; see the [legacy workflow](docs/LEGACY_WORKFLOW.md).
+The CLI remains available for advanced use and automation; the UI and CLI use the same review workspaces. See the [Stage A command reference](docs/STAGE_A.md).
 
 Other references:
 
@@ -47,7 +50,19 @@ Other references:
 ## Validation
 
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
-Set `PANDOC` to an executable path to include the real Word-conversion integration tests; otherwise those tests skip. UI interaction tests require the packages in `requirements-ui.txt`.
+Set `PANDOC` to an executable path to include the real Word-conversion integration tests; otherwise those tests skip. UI interaction tests require the packages in `requirements-ui.txt`, so run the tests with the `.venv` Python.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `app.py`, `.streamlit/` | Streamlit UI |
+| `scripts/` | `review.py` (CLI), `stage_a.py` (workflow engine), `ui_service.py`, `start_ui.py`, `word_style.py`, `demo_stage_a.py`, catalog/reference generators |
+| `review_template/` | Stage A field catalog and instructions, shared `sections.json`, Word reference style, reviewer checklist |
+| `docs/` | UI guide and Stage A command reference |
+| `examples/stage_a/` | Fictional pilot: sources and simulated Elsa response |
+| `tests/` | Test suite (`tests/fixtures/sample.pdf` is a sample PDF for the UI tests) |
+| `legacy/` | Superseded work, kept for reference: the original section-based Markdown workflow, the LaTeX memo template, and Windows launchers. See [legacy/README.md](legacy/README.md) |

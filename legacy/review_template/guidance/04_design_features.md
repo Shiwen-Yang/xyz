@@ -1,6 +1,6 @@
 # Instructions: Design Features:
 
-Original source: `content/4_design_features.tex`.
+Original source: `legacy/tex/content/4_design_features.tex`.
 
 Describe the study design. For a single-arm study omit inapplicable allocation-ratio, stratification, blinding, and comparative treatment-arm bullets after confirming applicability; describe the intervention/regimen in the population or other-features text. Do not lose the only intervention description when removing comparator fields. Do not discuss interim looks or non-inferiority design here; put those in sections 9 and 6.
 

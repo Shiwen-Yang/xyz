@@ -25,7 +25,7 @@ class UIServiceTests(unittest.TestCase):
         self.workspace = ui.create_review("Fictional review", "Reviewer", demo=True)
 
     def test_managed_sources_persist_versions_and_deduplicate(self):
-        pdf = (ROOT / "review_report.pdf").read_bytes()
+        pdf = (ROOT / "tests/fixtures/sample.pdf").read_bytes()
         ui.store_source(self.workspace, "../protocol file.pdf", pdf, "protocol", "2", "unknown")
         state = sa.load(self.workspace)
         path = Path(state["sources"]["PROTOCOL"]["path"])

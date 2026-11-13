@@ -12,11 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def create(destination):
-    review.initialize(destination, "stage-a")
+    review.initialize(destination)
     inputs = destination / "inputs"
     inputs.mkdir()
     for filename in ("protocol.md", "background.md"):
-        shutil.copyfile(ROOT / "examples/synthetic_review" / filename, inputs / filename)
+        shutil.copyfile(ROOT / "examples/stage_a/sources" / filename, inputs / filename)
     stage_a.register_source(destination, inputs / "protocol.md", "PROTOCOL", "protocol", "1.0", "2026-01-15")
     stage_a.register_source(destination, inputs / "background.md", "BACKGROUND_01", "background", "1.0", "2025-12-01")
     config = stage_a.read_json(destination / "review.json")

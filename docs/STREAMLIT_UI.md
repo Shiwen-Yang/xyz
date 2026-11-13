@@ -6,14 +6,14 @@ The UI replaces routine terminal commands and folder navigation with four browse
 
 Prerequisites:
 
-- Windows with Python 3.11 or newer and the `py` launcher.
+- Linux or WSL with Python 3.10 or newer and the `venv` module (Ubuntu/Debian: `sudo apt install python3-venv`).
 - Permission to install the pinned packages in `requirements-ui.txt` into this project's private `.venv`.
-- A current browser.
+- A current browser (under WSL2, the Windows browser reaches the app through localhost forwarding).
 - Pandoc only if Word output is being tested.
 
-Double-click `setup_ui.bat`. It creates `.venv` beside the project and installs Streamlit and the local PDF-viewer component there. It does not change the system Python environment. If package installation is controlled by your organization, give IT `requirements-ui.txt` and ask for the approved internal package source or installation procedure.
+Run `./setup_ui.sh`. It creates `.venv` beside the project and installs Streamlit and the local PDF-viewer component there. It does not change the system Python environment. If package installation is controlled by your organization, give IT `requirements-ui.txt` and ask for the approved internal package source or installation procedure.
 
-Then double-click `start_ui.bat`. It starts the app only on `127.0.0.1` and opens `http://127.0.0.1:8501`. Keep the terminal window open. Closing it stops the app, but does not delete saved work.
+Then run `./start_ui.sh`. It starts the app only on `127.0.0.1` and opens `http://127.0.0.1:8501`. Keep the terminal open; Ctrl+C stops the app but does not delete saved work. On Windows without WSL, use the launchers in `legacy/windows/`.
 
 If port 8501 is already occupied, close the other Streamlit process before starting this app.
 
@@ -25,7 +25,7 @@ This confirms the review controls and local persistence without using proprietar
 2. In **Review sections**, change one `Memo wording` box.
 3. Click **Save section draft**. Move to **Export**, then return to **Review sections** and confirm the edit remains.
 4. Click **Approve section and continue** and confirm the app advances to the next section.
-5. Close the terminal, run `start_ui.bat` again, select the fictional review in the sidebar, and confirm the approved wording remains.
+5. Stop the app, run `./start_ui.sh` again, select the fictional review in the sidebar, and confirm the approved wording remains.
 6. On **Export**, download **draft Markdown**. Word generation can wait until Pandoc is approved.
 
 The fictional example uses text sources, not a PDF. It is useful for workflow testing but does not test Elsa, PDF rendering, or retrieval accuracy.
@@ -72,7 +72,7 @@ Sections 11–13 and the assessment portion of section 1 are manual reviewer wor
 
 **Create draft Word** is available before the review is complete and marks unresolved content in the assembled memo. **Create final Word** requires all required decisions, a current factual executive summary, the manual sections, and the final reviewer checkbox.
 
-Word output requires Pandoc. If it is authorized but not on `PATH`, expand **Word settings**, enter the full path to `pandoc.exe`, and click **Remember Word setting**. Markdown remains available without Pandoc.
+Word output requires Pandoc. If it is authorized but not on `PATH`, expand **Word settings**, enter the full path to the `pandoc` executable, and click **Remember Word setting**. Markdown remains available without Pandoc.
 
 Always open the resulting `.docx` in Word and inspect tables, lists, pagination, equations, and every page. Regenerating the report does not preserve edits made only inside a previous Word copy.
 
@@ -84,11 +84,11 @@ Back up the whole review folder if organizational policy permits. Do not rely on
 
 ## Troubleshooting
 
-- **The launcher says Python is missing:** install an approved Python 3.11+ distribution that supplies the Windows `py` launcher.
+- **Setup says Python or venv is missing:** install Python 3.10+ (`sudo apt install python3 python3-venv` on Ubuntu/Debian).
 - **Setup cannot download packages:** use the organization's approved package mirror or ask IT to install `requirements-ui.txt` into `.venv`.
-- **The browser does not open:** while the terminal remains open, visit `http://127.0.0.1:8501` manually.
+- **The browser does not open:** while the terminal remains open, visit `http://127.0.0.1:8501` manually. In WSL, `sudo apt install wslu` lets the launcher open the Windows browser.
 - **The app will not start:** check whether another application is using port 8501 and review the terminal messages.
-- **Word conversion fails:** continue with Markdown, then enter the approved `pandoc.exe` path under Word settings after Pandoc is installed.
+- **Word conversion fails:** continue with Markdown, then install Pandoc (or enter the approved executable path) under Word settings after Pandoc is installed.
 - **A response is rejected:** confirm it was produced from the currently selected review's most recent instructions and that all requested fields are present.
 - **A PDF citation looks wrong:** do not approve it. Correct the response through a fresh extraction request or edit the memo wording only after verifying the exact source yourself.
 

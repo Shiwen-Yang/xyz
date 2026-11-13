@@ -373,7 +373,7 @@ def main():
         st.radio("Workspace", SCREENS, key="screen")
     workspace = Path(st.session_state["workspace"]) if st.session_state.get("workspace") else None
     if workspace and not sa.active(workspace):
-        st.info("This review uses the legacy workflow. It is unchanged and can still be used through the existing CLI. Choose New review for the guided app.")
+        st.info("This review uses the legacy workflow, which this app does not open. See legacy/README.md for its command-line tool, or choose New review for the guided app.")
         return
     if workspace:
         st.caption(sa.read_json(workspace / "review.json").get("ui_name", workspace.name))

@@ -12,9 +12,10 @@ import unittest
 import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
-import review
+sys.path.insert(0, str(ROOT / "legacy" / "scripts"))
+import review_legacy as review
 from word_style import customize, tag
 
 PANDOC = os.environ.get("PANDOC") or shutil.which("pandoc")
@@ -26,7 +27,7 @@ class ReviewTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
         self.workspace = self.directory / "review"
-        shutil.copytree(ROOT / "examples" / "synthetic_review", self.workspace)
+        shutil.copytree(ROOT / "legacy" / "examples" / "synthetic_review", self.workspace)
 
     def args(self, **overrides):
         values = dict(workspace=self.workspace, output=self.directory / "report.docx",
@@ -126,7 +127,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(len(set(identifiers)), len(identifiers))
         for section in sections:
             self.assertTrue((ROOT / section["source_tex"]).exists())
-            guidance = (review.PACKAGE / "guidance" / section["file"]).read_text()
+            guidance = (review.LEGACY / "guidance" / section["file"]).read_text()
             for field in section["fields"]:
                 self.assertIn(field["id"], guidance)
                 self.assertTrue(field["instructions"])

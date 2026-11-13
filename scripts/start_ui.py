@@ -1,6 +1,7 @@
-"""Start the local app, wait for readiness, then open the browser (Windows launcher)."""
+"""Start the local app, wait for readiness, then open the browser (Linux, WSL and Windows)."""
 import http.client
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -8,6 +9,15 @@ import webbrowser
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "http://127.0.0.1:8501"
+
+
+def open_browser():
+    """Open the app; in WSL prefer wslview (wslu) so the Windows browser is used."""
+    wslview = shutil.which("wslview")
+    if wslview:
+        subprocess.run([wslview, URL], check=False)
+    elif not webbrowser.open(URL):
+        print("Open " + URL + " in your browser.")
 
 
 def healthy():
@@ -24,7 +34,7 @@ def healthy():
 def main():
     if healthy():
         print("A Streamlit app is already running at " + URL + ". Opening it without starting another server.")
-        webbrowser.open(URL)
+        open_browser()
         return
     child = subprocess.Popen([sys.executable, "-m", "streamlit", "run", str(ROOT / "app.py"),
                               "--server.address=127.0.0.1", "--server.port=8501",
@@ -33,8 +43,8 @@ def main():
         deadline = time.monotonic() + 45
         while child.poll() is None and time.monotonic() < deadline:
             if healthy():
-                webbrowser.open(URL)
-                print("Protocol Review is open. Keep this window open; close it to stop the app.")
+                open_browser()
+                print("Protocol Review is running at " + URL + ". Keep this window open; press Ctrl+C or close it to stop the app.")
                 child.wait()
                 return
             time.sleep(0.3)

@@ -5,7 +5,7 @@
       "number": 1,
       "file": "01_executive_summary.md",
       "title": "Executive Summary:",
-      "source_tex": "content/1_executive_summary.tex",
+      "source_tex": "legacy/tex/content/1_executive_summary.tex",
       "fields": [
         {
           "id": "EXECUTIVE.FACTS",
@@ -36,7 +36,7 @@
       "number": 2,
       "file": "02_background.md",
       "title": "Background:",
-      "source_tex": "content/2_background.tex",
+      "source_tex": "legacy/tex/content/2_background.tex",
       "fields": [
         {
           "id": "BACKGROUND.SUBMISSION",
@@ -78,7 +78,7 @@
       "number": 3,
       "file": "03_primary_objectives.md",
       "title": "Primary Objective(s):",
-      "source_tex": "content/3_primary_objectives.tex",
+      "source_tex": "legacy/tex/content/3_primary_objectives.tex",
       "fields": [
         {
           "id": "OBJECTIVES.PRIMARY",
@@ -109,7 +109,7 @@
       "number": 4,
       "file": "04_design_features.md",
       "title": "Design Features:",
-      "source_tex": "content/4_design_features.tex",
+      "source_tex": "legacy/tex/content/4_design_features.tex",
       "fields": [
         {
           "id": "DESIGN.POPULATION",
@@ -228,7 +228,7 @@
       "number": 5,
       "file": "05_endpoints.md",
       "title": "Endpoints:",
-      "source_tex": "content/5_endpoints.tex",
+      "source_tex": "legacy/tex/content/5_endpoints.tex",
       "fields": [
         {
           "id": "ENDPOINTS.PRIMARY",
@@ -259,7 +259,7 @@
       "number": 6,
       "file": "06_statistical_hypothesis.md",
       "title": "Statistical Hypothesis:",
-      "source_tex": "content/6_statistical_hypothesis.tex",
+      "source_tex": "legacy/tex/content/6_statistical_hypothesis.tex",
       "fields": [
         {
           "id": "HYPOTHESIS.STATEMENT",
@@ -301,7 +301,7 @@
       "number": 7,
       "file": "07_analyses_for_primary_endpoints.md",
       "title": "Analyses for Primary Endpoint(s):",
-      "source_tex": "content/7_analyses_for_primary_endpoints.tex",
+      "source_tex": "legacy/tex/content/7_analyses_for_primary_endpoints.tex",
       "fields": [
         {
           "id": "PRIMARY_ANALYSIS.PRIMARY",
@@ -398,7 +398,7 @@
       "number": 8,
       "file": "08_analyses_for_other_important_endpoints.md",
       "title": "Analyses for Other Important Endpoint(s):",
-      "source_tex": "content/8_analyses_for_other_important_endpoints.tex",
+      "source_tex": "legacy/tex/content/8_analyses_for_other_important_endpoints.tex",
       "fields": [
         {
           "id": "OTHER_ANALYSIS.PRIMARY",
@@ -495,7 +495,7 @@
       "number": 9,
       "file": "09_interim_analyses.md",
       "title": "Interim Analyses:",
-      "source_tex": "content/9_interim_analyses.tex",
+      "source_tex": "legacy/tex/content/9_interim_analyses.tex",
       "fields": [
         {
           "id": "INTERIM.PLAN",
@@ -570,7 +570,7 @@
       "number": 10,
       "file": "10_sample_size_estimation.md",
       "title": "Sample Size Estimation:",
-      "source_tex": "content/10_sample_size_estimation.tex",
+      "source_tex": "legacy/tex/content/10_sample_size_estimation.tex",
       "fields": [
         {
           "id": "SAMPLE_SIZE.SUBJECTS",
@@ -700,7 +700,7 @@
       "number": 11,
       "file": "11_other_aspects.md",
       "title": "Other Aspects:",
-      "source_tex": "content/11_other_aspects.tex",
+      "source_tex": "legacy/tex/content/11_other_aspects.tex",
       "fields": [
         {
           "id": "OTHER.ISSUES",
@@ -720,7 +720,7 @@
       "number": 12,
       "file": "12_comments_to_review_team.md",
       "title": "Comments to CBER Review Team:",
-      "source_tex": "content/12_comments_to_review_team.tex",
+      "source_tex": "legacy/tex/content/12_comments_to_review_team.tex",
       "fields": [
         {
           "id": "TEAM.COMMENTS",
@@ -740,7 +740,7 @@
       "number": 13,
       "file": "13_comments_and_questions_to_sponsor.md",
       "title": "Comments and Questions to Sponsor:",
-      "source_tex": "content/13_comments_and_questions_to_sponsor.tex",
+      "source_tex": "legacy/tex/content/13_comments_and_questions_to_sponsor.tex",
       "fields": [
         {
           "id": "SPONSOR.COMMENTS",

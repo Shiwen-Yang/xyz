@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0..\.."
 if not exist ".venv\Scripts\python.exe" (
   py -3 -c "import sys; raise SystemExit(sys.version_info < (3,11))"
   if errorlevel 1 (

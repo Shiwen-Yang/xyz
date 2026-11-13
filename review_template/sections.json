@@ -3,7 +3,7 @@
     "number": 1,
     "file": "01_executive_summary.md",
     "title": "Executive Summary:",
-    "source_tex": "content/1_executive_summary.tex",
+    "source_tex": "legacy/tex/content/1_executive_summary.tex",
     "instructions": "Draft last, using the approved report and approved concerns. Write a short abstract of salient protocol features, major issues, and important requests. Do not introduce new findings.",
     "fields": [
       {
@@ -20,7 +20,7 @@
     "number": 2,
     "file": "02_background.md",
     "title": "Background:",
-    "source_tex": "content/2_background.tex",
+    "source_tex": "legacy/tex/content/2_background.tex",
     "instructions": "Use the protocol plus separately identified background sources. Prior regulatory history may require correspondence or reviewer input; its absence from the protocol does not establish that no agreement exists.",
     "fields": [
       {
@@ -51,7 +51,7 @@
     "number": 3,
     "file": "03_primary_objectives.md",
     "title": "Primary Objective(s):",
-    "source_tex": "content/3_primary_objectives.tex",
+    "source_tex": "legacy/tex/content/3_primary_objectives.tex",
     "instructions": "Describe primary objectives. Include secondary/key secondary objectives only when statistically important to this review.",
     "fields": [
       {
@@ -75,7 +75,7 @@
     "number": 4,
     "file": "04_design_features.md",
     "title": "Design Features:",
-    "source_tex": "content/4_design_features.tex",
+    "source_tex": "legacy/tex/content/4_design_features.tex",
     "instructions": "Describe the study design. For a single-arm study omit inapplicable allocation-ratio, stratification, blinding, and comparative treatment-arm bullets after confirming applicability; describe the intervention/regimen in the population or other-features text. Do not lose the only intervention description when removing comparator fields. Do not discuss interim looks or non-inferiority design here; put those in sections 9 and 6.",
     "fields": [
       {
@@ -155,7 +155,7 @@
     "number": 5,
     "file": "05_endpoints.md",
     "title": "Endpoints:",
-    "source_tex": "content/5_endpoints.tex",
+    "source_tex": "legacy/tex/content/5_endpoints.tex",
     "instructions": "Provide a detailed definition for every included endpoint. Repeat named endpoint subsections or labeled paragraphs as needed. Separate efficacy and safety if useful. Preserve measurement, assessment window/time origin, event definition, and derivation details that are stated; do not invent missing components.",
     "fields": [
       {
@@ -179,7 +179,7 @@
     "number": 6,
     "file": "06_statistical_hypothesis.md",
     "title": "Statistical Hypothesis:",
-    "source_tex": "content/6_statistical_hypothesis.tex",
+    "source_tex": "legacy/tex/content/6_statistical_hypothesis.tex",
     "instructions": "State explicit hypotheses and define every parameter, treatment direction, and margin. If the protocol gives no formal hypothesis, report that it was not located rather than constructing one without labeling it as reviewer interpretation.",
     "fields": [
       {
@@ -210,7 +210,7 @@
     "number": 7,
     "file": "07_analyses_for_primary_endpoints.md",
     "title": "Analyses for Primary Endpoint(s):",
-    "source_tex": "content/7_analyses_for_primary_endpoints.tex",
+    "source_tex": "legacy/tex/content/7_analyses_for_primary_endpoints.tex",
     "instructions": "Repeat the complete analysis block under a named ## endpoint heading for every primary endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. PRIMARY_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.",
     "fields": [
       {
@@ -276,7 +276,7 @@
     "number": 8,
     "file": "08_analyses_for_other_important_endpoints.md",
     "title": "Analyses for Other Important Endpoint(s):",
-    "source_tex": "content/8_analyses_for_other_important_endpoints.tex",
+    "source_tex": "legacy/tex/content/8_analyses_for_other_important_endpoints.tex",
     "instructions": "Repeat the complete analysis block under a named ## endpoint heading for every other statistically important endpoint. Keep each method, analysis population, missing-data rule, and alpha allocation attached to its endpoint. Use endpoint-specific evidence IDs, e.g. OTHER_ANALYSIS.PFS.METHOD. For section 8, do not accidentally relabel other-endpoint analyses as primary-endpoint analyses.",
     "fields": [
       {
@@ -342,7 +342,7 @@
     "number": 9,
     "file": "09_interim_analyses.md",
     "title": "Interim Analyses:",
-    "source_tex": "content/9_interim_analyses.tex",
+    "source_tex": "legacy/tex/content/9_interim_analyses.tex",
     "instructions": "If absence of interim analyses is established, replace all bullets with None and record the supporting evidence. Failure to locate an interim section is not evidence of absence. Distinguish efficacy, futility, safety, and sample-size-reestimation looks.",
     "fields": [
       {
@@ -387,7 +387,7 @@
     "number": 10,
     "file": "10_sample_size_estimation.md",
     "title": "Sample Size Estimation:",
-    "source_tex": "content/10_sample_size_estimation.tex",
+    "source_tex": "legacy/tex/content/10_sample_size_estimation.tex",
     "instructions": "List planned accrual and expected primary-analysis contributors. If sizing is based on medical/regulatory considerations instead of power, explain that basis in the first bullet and omit the remaining calculation bullets; preserve any reviewer assessment of safety-sizing parameters in that explanation. Keep sponsor calculations separate from independent reviewer verification.",
     "fields": [
       {
@@ -474,7 +474,7 @@
     "number": 11,
     "file": "11_other_aspects.md",
     "title": "Other Aspects:",
-    "source_tex": "content/11_other_aspects.tex",
+    "source_tex": "legacy/tex/content/11_other_aspects.tex",
     "instructions": "Briefly describe important issues not covered elsewhere, such as product-specific safety concerns. If no other issues remain after reviewer assessment, retain the heading with Not applicable in the draft; the reviewer may omit this section at final Word editing, consistent with the original comment-out instruction. The automated 13-section build retains the heading. Less critical personal reference information belongs in a separate appendix, not this section.",
     "fields": [
       {
@@ -491,7 +491,7 @@
     "number": 12,
     "file": "12_comments_to_review_team.md",
     "title": "Comments to CBER Review Team:",
-    "source_tex": "content/12_comments_to_review_team.tex",
+    "source_tex": "legacy/tex/content/12_comments_to_review_team.tex",
     "instructions": "Reviewer approval is required. Include product-office comments/questions or internal explanation of approved letter-ready comments when needed. Do not copy sponsor comments here. State None only after reviewer confirmation.",
     "fields": [
       {
@@ -508,7 +508,7 @@
     "number": 13,
     "file": "13_comments_and_questions_to_sponsor.md",
     "title": "Comments and Questions to Sponsor:",
-    "source_tex": "content/13_comments_and_questions_to_sponsor.tex",
+    "source_tex": "legacy/tex/content/13_comments_and_questions_to_sponsor.tex",
     "instructions": "Reviewer approval is required. Produce letter-ready comments/questions and, where relevant, responses to sponsor statistics questions. Draft only from approved concerns and supplied evidence. State None only after reviewer confirmation.",
     "fields": [
       {
