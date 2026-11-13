@@ -231,8 +231,12 @@ def find_download(folder, request_id):
     return max(matches, key=lambda p: p.stat().st_mtime)
 
 
+OBJECTIVE_NAMES = {"OBJECTIVES.PRIMARY": "Primary Objective", "OBJECTIVES.OTHER": "Secondary Objective",
+                   "OBJECTIVES.EXPLORATORY": "Other Objective"}
+
+
 def objective_references(workspace):
-    """Extracted objectives with their evidence, resolved to the exact stored PDF version."""
+    """Extracted objectives with evidence, review status and flags, in display order."""
     state = sa.load(workspace)
     versions = source_versions(workspace)
     references = []
@@ -249,15 +253,138 @@ def objective_references(workspace):
             version = versions.get(version_key)
             sources.append(dict(source, version_key=version_key, filename=meta["filename"],
                                 path=version["path"] if version else None))
-        draft = state.get("ui_drafts", {}).get(item["key"])
+        accepted = item["accepted"]
+        current = bool(accepted and accepted["candidate_id"] == item["candidate_id"] and not sa.stale_reasons(workspace, state, accepted))
         original = record["value"] or ""
-        text = draft["text"] if draft else original  # unfound items start empty, not with a stock disposition
-        references.append(dict(key=item["key"], label=item["label"], field=item["field"]["label"],
-                               status=record["status"], value=record["value"], explanation=record["explanation"],
-                               sources=sources, candidate_id=item["candidate_id"], original=original, text=text,
-                               has_draft=bool(draft), edited=text != original, include=item["include"], reason=item["reason"]))
+        if accepted and current:
+            text = accepted["text"] if (accepted["include"] or record["status"] == "found") else ""
+        else:
+            text = original  # unfound items start empty, not with a stock disposition
+        flag = state.get("ui_flags", {}).get(item["key"])
+        checked = state.get("ui_checked", {}).get(item["key"]) == sa.digest(text.encode("utf-8")) and current
+        references.append(dict(key=item["key"], group=item["field"]["id"], instance=record["instance_id"], label=item["label"],
+                               field=item["field"]["label"], status=record["status"], value=record["value"],
+                               explanation=record["explanation"], sources=sources, candidate_id=item["candidate_id"],
+                               original=original, text=text, approved=current, included=bool(current and accepted["include"]),
+                               flag=flag, checked=checked))
     order = {identifier: n for n, (identifier, _) in enumerate(OBJECTIVE_GROUPS)}
-    return sorted(references, key=lambda r: order.get(r["key"].split("/", 1)[0], 99))
+    references.sort(key=lambda r: order.get(r["group"], 99))
+    counts = {}
+    for ref in references:
+        counts[ref["group"]] = counts.get(ref["group"], 0) + 1
+        base = OBJECTIVE_NAMES.get(ref["group"], ref["field"])
+        ref["name"] = f"{base} {counts[ref['group']]}" if ref["instance"] != "none" else base + "s (none found by Elsa)"
+    return references
+
+
+def reviewer_name(workspace):
+    return sa.read_json(workspace / "review.json").get("ui_reviewer", "")
+
+
+def approve_item(workspace, item_key, text):
+    """'Looks good': approve one objective's wording so it can reach the memo."""
+    with _LOCK:
+        state = sa.load(workspace)
+        ref = next((r for r in objective_references(workspace) if r["key"] == item_key), None)
+        if not ref:
+            raise ValueError("Unknown objective")
+        text, status = text.strip(), ref["status"]
+        if text:
+            include = True
+            reason = "" if status == "found" else "Wording entered by the reviewer; Elsa did not extract this item."
+        elif status == "found":
+            raise ValueError("Enter the objective wording, or reset to Elsa's text.")
+        else:
+            text, include = sa.DISPOSITIONS[status], False
+            reason = ref["explanation"] or "Reviewer confirmed that no such objective is stated."
+        updated = copy.deepcopy(state)
+        result = sa.apply_review_decision(workspace, updated, candidate_id=ref["candidate_id"], reviewer=reviewer_name(workspace) or "Reviewer",
+                                          text=text, reason=reason, exclude=not include)
+        for table in ("ui_drafts", "ui_flags", "ui_checked"):
+            updated.get(table, {}).pop(item_key, None)
+        path, data = result
+        backup = path.read_bytes() if path.exists() else None
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            sa.save(workspace, updated)
+        except OSError:
+            if backup is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(backup)
+            raise
+
+
+def reset_item(workspace, item_key):
+    """Back to Elsa's original: drop the approval, draft, flag and check for one objective."""
+    with _LOCK:
+        state = sa.load(workspace)
+        state["reviewed"].pop(item_key, None)
+        for table in ("ui_drafts", "ui_flags", "ui_checked"):
+            state.get(table, {}).pop(item_key, None)
+        sa.save(workspace, state)
+
+
+def flag_item(workspace, item_key, note=""):
+    with _LOCK:
+        state = sa.load(workspace)
+        if item_key not in state["reviewed"]:
+            raise ValueError("Only approved wording can be flagged.")
+        state.setdefault("ui_flags", {})[item_key] = dict(note=note.strip(), at=sa.now())
+        state.get("ui_checked", {}).pop(item_key, None)
+        sa.save(workspace, state)
+
+
+def mark_checked(workspace, item_key):
+    """Export-preview check: this wording matches its source. Clears any earlier flag."""
+    with _LOCK:
+        state = sa.load(workspace)
+        accepted = state["reviewed"].get(item_key)
+        if not accepted:
+            raise ValueError("Only approved wording can be checked.")
+        state.setdefault("ui_checked", {})[item_key] = sa.digest(accepted["text"].encode("utf-8")) if accepted["include"] else sa.digest(b"")
+        state.get("ui_flags", {}).pop(item_key, None)
+        sa.save(workspace, state)
+
+
+def section_done(workspace, number):
+    """A section shows its green check once finished and while every item stays approved and unflagged."""
+    state = sa.load(workspace)
+    if not state.get("ui_sections_done", {}).get(str(number)):
+        return False
+    refs = objective_references(workspace) if number == OBJECTIVES_SECTION else []
+    return bool(refs) and all(r["approved"] and not r["flag"] for r in refs)
+
+
+def complete_section(workspace, number):
+    with _LOCK:
+        refs = objective_references(workspace) if number == OBJECTIVES_SECTION else []
+        if not refs or not all(r["approved"] and not r["flag"] for r in refs):
+            raise ValueError("Click Looks good on every item first.")
+        state = sa.load(workspace)
+        state.setdefault("ui_sections_done", {})[str(number)] = True
+        sa.save(workspace, state)
+
+
+def memo_items(workspace):
+    """What the memo will say for the finished section(s), for the Export check."""
+    return [r for r in objective_references(workspace) if r["included"]]
+
+
+def content_hash(workspace):
+    return sa.object_hash([(r["key"], r["text"]) for r in memo_items(workspace)])
+
+
+def mark_export_ready(workspace):
+    with _LOCK:
+        state = sa.load(workspace)
+        state["ui_export_ready"] = content_hash(workspace)
+        sa.save(workspace, state)
+
+
+def export_ready(workspace):
+    return sa.load(workspace).get("ui_export_ready") == content_hash(workspace)
 
 
 def section_items(workspace, number, state=None):
@@ -329,23 +456,6 @@ def save_draft(workspace, item_key, text, include, reason, candidate_id, manual=
         state.setdefault("ui_drafts", {})[item_key] = dict(candidate_id=candidate_id, manual=manual,
                                                          text=text.strip(), include=bool(include), reason=reason.strip())
         sa.save(workspace, state)
-
-
-def save_objective_draft(workspace, item_key, text):
-    """Save edited wording as an unapproved draft; Elsa's original stays untouched."""
-    with _LOCK:
-        for ref in objective_references(workspace):
-            if ref["key"] == item_key:
-                save_draft(workspace, item_key, text, ref["include"], ref["reason"], ref["candidate_id"])
-                return
-    raise ValueError("Unknown objective")
-
-
-def reset_draft(workspace, item_key):
-    with _LOCK:
-        state = sa.load(workspace)
-        if state.get("ui_drafts", {}).pop(item_key, None) is not None:
-            sa.save(workspace, state)
 
 
 def choose_candidate(workspace, item_key, candidate_id):

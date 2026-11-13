@@ -89,6 +89,21 @@ class StreamlitTests(unittest.TestCase):
         self.assertTrue(app.error)
         self.assertEqual({}, sa.load(workspace)["imports"])
 
+    def load_objectives(self, app, workspace, payload=None):
+        self.button(app, "Prepare prompt").click().run()
+        request_id = svc_request(workspace)
+        ui.import_bytes(workspace, json.dumps(payload or self.objectives_payload(request_id)).encode())
+        self.button(app, "Next →").click().run()
+        self.button(app, "Next →").click().run()
+        self.assert_clean(app)
+
+    def approve_all(self, app, count=3):
+        for index in range(count):
+            [b for b in app.button if b.label == "Looks good"][index].click().run()
+
+    def box(self, app, workspace, key):
+        return next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:{key}:"))
+
     def test_load_from_downloads_folder_lists_references_and_highlights(self):
         app, workspace = self.workspace_with_pdf()
         self.button(app, "Prepare prompt").click().run()
@@ -101,15 +116,16 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
         self.assertEqual(3, len(sa.load(workspace)["candidates"]))
+        self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
         self.assertFalse([b for b in app.button if b.label == "Locate reference"])  # still on step 2
         self.button(app, "Next →").click().run()
         headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
         self.assertEqual(["#### Primary objectives", "#### Secondary objectives", "#### Other objectives (exploratory, etc.)"], headings)
-        self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
+        names = [e.label for e in app.expander if "Objective" in e.label and not e.label[0].isdigit()]
+        self.assertEqual(["Primary Objective 1", "Secondary Objective 1", "Other Objectives (none found by Elsa)"], names)
         locate = [b for b in app.button if b.label == "Locate reference"]
         self.assertEqual(3, len(locate))
         self.assertTrue(locate[2].disabled)  # the "not found" item cites nothing
-        self.assertEqual("Primary Objective(s):", app.text_area(key=f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:" + next(iter(sa.load(workspace)["candidates"]))).value)
         locate[0].click().run()
         self.assert_clean(app)
         args = json.loads(app.get("component_instance")[-1].proto.json_args)
@@ -135,41 +151,97 @@ class StreamlitTests(unittest.TestCase):
             pages.append(json.loads(app.get("component_instance")[-1].proto.json_args)["pages_to_render"][0])
         self.assertEqual([1, 2, 1], pages)
 
-    def test_edit_saves_a_draft_and_can_be_restored(self):
+    def test_looks_good_approves_collapses_and_reset_undoes_it(self):
         app, workspace = self.workspace_with_pdf()
-        self.button(app, "Prepare prompt").click().run()
-        request_id = svc_request(workspace)
-        ui.import_bytes(workspace, json.dumps(self.objectives_payload(request_id)).encode())
-        self.button(app, "Next →").click().run()
-        self.button(app, "Next →").click().run()
-        box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:"))
-        box.input("Edited primary objective").run()
-        self.assertTrue(any("Unsaved" in c.value for c in app.caption))
-        self.button(app, "Save edits").click().run()
+        self.load_objectives(app, workspace)
+        self.box(app, workspace, "OBJECTIVES.PRIMARY/P1").input("Edited primary objective").run()
+        self.assertTrue(any("not confirmed" in c.value for c in app.caption))
+        next(b for b in app.button if b.label == "Looks good").click().run()
         self.assert_clean(app)
-        draft = sa.load(workspace)["ui_drafts"]["OBJECTIVES.PRIMARY/P1"]
-        self.assertEqual("Edited primary objective", draft["text"])
-        self.assertEqual({}, sa.load(workspace)["reviewed"])  # saving never approves
-        self.assertTrue(any("Edited draft saved" in c.value for c in app.caption))
-        candidate = sa.load(workspace)["candidates"][draft["candidate_id"]]
+        reviewed = sa.load(workspace)["reviewed"]["OBJECTIVES.PRIMARY/P1"]
+        self.assertEqual("Edited primary objective", reviewed["text"])
+        first = next(e for e in app.expander if e.label.endswith("Primary Objective 1"))
+        self.assertEqual("✅ Primary Objective 1", first.label)
+        self.assertFalse(first.proto.expanded)  # a finished bulletin collapses
+        candidate = sa.load(workspace)["candidates"][reviewed["candidate_id"]]
         self.assertEqual("Primary Objective(s):", candidate["record"]["value"])  # Elsa's original untouched
-        self.button(app, "Restore Elsa's text").click().run()
-        self.assertNotIn("OBJECTIVES.PRIMARY/P1", sa.load(workspace).get("ui_drafts", {}))
-        box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:"))
-        self.assertEqual("Primary Objective(s):", box.value)
+        next(b for b in app.button if b.label == "↻").click().run()
+        self.assert_clean(app)
+        self.assertNotIn("OBJECTIVES.PRIMARY/P1", sa.load(workspace)["reviewed"])
+        self.assertEqual("Primary Objective(s):", self.box(app, workspace, "OBJECTIVES.PRIMARY/P1").value)
 
-    def test_missing_download_reports_the_expected_file_name(self):
+    def test_finish_section_marks_header_and_unlocks_export(self):
         app, workspace = self.workspace_with_pdf()
-        self.button(app, "Prepare prompt").click().run()
-        self.button(app, "Next →").click().run()
-        app.text_input(key=f"folder:{workspace.name}").input(self.temp.name).run()
-        self.button(app, "Load response from this folder").click().run()
-        self.assertIn(ui.elsa_filename(svc_request(workspace)), app.error[0].value)
+        self.load_objectives(app, workspace)
+        finish = self.button(app, "Finish this section ✓")
+        self.assertTrue(finish.disabled)
+        self.assertTrue(self.button(app, "Continue to Export →").disabled)
+        self.approve_all(app)
+        self.assert_clean(app)
+        self.assertIn("OBJECTIVES.EXPLORATORY/none", sa.load(workspace)["reviewed"])  # confirmed "none stated"
+        self.assertFalse(sa.load(workspace)["reviewed"]["OBJECTIVES.EXPLORATORY/none"]["include"])
+        self.button(app, "Finish this section ✓").click().run()
+        self.assert_clean(app)
+        header = next(e for e in app.expander if e.label.endswith("3. Primary Objective(s)"))
+        self.assertEqual("✅ 3. Primary Objective(s)", header.label)
+        self.assertFalse(header.proto.expanded)
+        self.button(app, "Continue to Export →").click().run()
+        self.assertEqual("Export", app.session_state["screen"])
+
+    def finish_objectives(self, app, workspace):
+        self.load_objectives(app, workspace)
+        self.approve_all(app)
+        self.button(app, "Finish this section ✓").click().run()
+        self.button(app, "Continue to Export →").click().run()
+        self.assert_clean(app)
+
+    def test_export_check_flag_reopens_bulletin_and_all_set_requires_every_check(self):
+        app, workspace = self.workspace_with_pdf()
+        self.finish_objectives(app, workspace)
+        self.assertTrue(self.button(app, "All Set ✓").disabled)
+        app.text_input(key="flagnote:OBJECTIVES.PRIMARY/P1").input("Wrong page").run()
+        next(b for b in app.button if b.key == "mflag:OBJECTIVES.PRIMARY/P1").click().run()
+        self.assert_clean(app)
+        self.assertEqual("Wrong page", sa.load(workspace)["ui_flags"]["OBJECTIVES.PRIMARY/P1"]["note"])
+        next(b for b in app.button if b.key == "mgood:OBJECTIVES.OTHER/S1").click().run()
+        self.assertTrue(self.button(app, "All Set ✓").disabled)  # a flag blocks it
+        self.assertTrue(any("flagged" in w.value.lower() for w in app.warning))
+        self.button(app, "← Back to Review workspace to edit").click().run()
+        self.assertEqual("Review workspace", app.session_state["screen"])
+        reopened = next(e for e in app.expander if e.label.endswith("Primary Objective 1"))
+        self.assertTrue(reopened.label.startswith("🚩"))
+        self.assertTrue(reopened.proto.expanded)
+        self.assertTrue(any("Wrong page" in e.value for e in app.error))
+        self.assertTrue(self.button(app, "Continue to Export →").disabled)  # section lost its check
+        next(b for b in app.button if b.label == "Looks good" and b.key.endswith("OBJECTIVES.PRIMARY/P1:" + sa.load(workspace)["reviewed"]["OBJECTIVES.PRIMARY/P1"]["candidate_id"])).click().run()
+        self.assertNotIn("OBJECTIVES.PRIMARY/P1", sa.load(workspace).get("ui_flags", {}))
+        self.assertFalse(self.button(app, "Continue to Export →").disabled)
+        self.button(app, "Continue to Export →").click().run()
+        next(b for b in app.button if b.key == "mgood:OBJECTIVES.PRIMARY/P1").click().run()
+        self.button(app, "All Set ✓").click().run()
+        self.assert_clean(app)
+        self.assertTrue(ui.export_ready(workspace))
+        self.assertTrue(any(w.label == "Download draft Markdown" for w in app.get("download_button")))
+
+    def test_progress_indicator_replaces_sidebar_navigation(self):
+        app = self.start()
+        self.assertEqual(0, len(app.sidebar.radio))
+        self.assertTrue(any(m.value.startswith("**● 1. Set up**") for m in app.markdown))
+        app, workspace = self.workspace_with_pdf()
+        self.assertTrue(any(m.value.startswith(":green[✓ 1. Set up]") for m in app.markdown))
+        self.assertTrue(any(m.value.startswith("**● 2. Review workspace**") for m in app.markdown))
+
+    def test_saved_review_can_be_reopened_from_set_up(self):
+        workspace = ui.create_review("Saved one", "Reviewer")
+        app = self.start()
+        app.selectbox(key="saved_review").set_value(str(workspace)).run()
+        self.button(app, "Open review").click().run()
+        self.assert_clean(app)
+        self.assertEqual(str(workspace), app.session_state["workspace"])
 
     def test_other_sections_are_listed_but_not_yet_available(self):
         app, workspace = self.demo()
-        app.radio[0].set_value("Review workspace").run()
-        self.assert_clean(app)
+        self.assertEqual("Review workspace", app.session_state["screen"])
         labels = [e.label for e in app.expander if e.label[0].isdigit()]
         self.assertEqual(13, len(labels))
         self.assertIn("3. Primary Objective(s)", labels)
@@ -177,7 +249,12 @@ class StreamlitTests(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("PANDOC") or shutil.which("pandoc"), "Set PANDOC for Word download control test")
     def test_word_generation_exposes_download_control(self):
         app, workspace = self.demo()
-        app.radio[0].set_value("Export").run()
+        for item in ui.objective_references(workspace):
+            ui.approve_item(workspace, item["key"], item["text"])
+            ui.mark_checked(workspace, item["key"])
+        ui.mark_export_ready(workspace)
+        app.session_state["screen"] = "Export"
+        app.run()
         pandoc = os.environ.get("PANDOC") or shutil.which("pandoc")
         next(w for w in app.text_input if w.label == "Pandoc executable (if not on PATH)").input(pandoc)
         self.button(app, "Remember Word setting").click().run()

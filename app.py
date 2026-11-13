@@ -37,6 +37,26 @@ def error(exc, workspace=None):
     st.error(svc.friendly_error(exc, workspace))
 
 
+def progress_indicator(current):
+    """Top-of-page progress through the fixed workflow; it shows where you are, it is not a menu."""
+    index = SCREENS.index(current)
+    columns = st.columns(len(SCREENS))
+    for number, (column, name) in enumerate(zip(columns, SCREENS)):
+        if number < index:
+            column.markdown(f":green[✓ {number + 1}. {name}]")
+        elif number == index:
+            column.markdown(f"**● {number + 1}. {name}**")
+        else:
+            column.markdown(f":gray[○ {number + 1}. {name}]")
+    st.progress((index + 1) / len(SCREENS))
+
+
+def open_review(path):
+    st.session_state["workspace"] = str(path)
+    for stale in ("source_version", "highlight", "pdf_page", "full_pdf"):
+        st.session_state.pop(stale, None)
+
+
 def setup(workspace):
     st.header("Set up your review")
     st.write("Add your documents once. Your work will be saved on this computer.")
@@ -50,12 +70,22 @@ def setup(workspace):
         if create or demo:
             try:
                 path = svc.create_review(name or ("Fictional example" if demo else ""), reviewer or ("Test reviewer" if demo else ""), demo=demo)
-                st.session_state["workspace"] = str(path)
-                st.session_state.pop("review_picker", None)
+                open_review(path)
                 notice("Fictional results loaded for practice. No answers have been approved." if demo else "Review created. Add the main protocol below.")
                 move("Review workspace" if demo else "Set up")
             except (ValueError, OSError) as exc:
                 error(exc)
+    saved = [r for r in svc.list_reviews() if not r["legacy"]]
+    if saved:
+        with st.expander("Continue a saved review", expanded=False):
+            paths = [str(r["path"]) for r in saved]
+            names = {str(r["path"]): r["name"] for r in saved}
+            choice = st.selectbox("Saved review", paths, index=paths.index(str(workspace)) if workspace and str(workspace) in paths else None,
+                                  format_func=lambda p: names[p], placeholder="Choose a review", key="saved_review")
+            if st.button("Open review", disabled=choice is None):
+                open_review(choice)
+                has_documents = bool(sa.load(Path(choice))["sources"])
+                move("Review workspace" if has_documents else "Set up")
     if workspace is None:
         return
     config = sa.read_json(workspace / "review.json")
@@ -196,23 +226,30 @@ def set_step(key, index):
     st.session_state[key] = index
 
 
-def stepper(workspace, name, steps):
+def stepper(workspace, name, steps, finish=None):
     """Show one step of a section at a time; earlier steps are hidden once you move on.
 
     ``steps`` is a list of ``(title, render, can_continue)``; Next stays disabled
-    until ``can_continue()`` is true after the step has rendered.
+    until ``can_continue()`` is true after the step has rendered.  ``finish`` is
+    ``(label, can_finish, on_finish)`` and replaces Next on the last step.
     """
     key = f"step:{workspace.name}:{name}"
     last = len(steps) - 1
-    index = max(0, min(int(st.session_state.get(key, 0)), last))
+    if key not in st.session_state:  # resume at the first unfinished step; never auto-advance afterwards
+        st.session_state[key] = next((n for n, (_, _, can) in enumerate(steps[:-1]) if not can()), last)
+    index = max(0, min(int(st.session_state[key]), last))
     title, render, can_continue = steps[index]
     st.progress((index + 1) / len(steps), text=f"Step {index + 1} of {len(steps)} · {title}")
     render()
     st.divider()
     back, forward = st.columns(2)
     back.button("← Back", key=key + ":back", disabled=index == 0, on_click=set_step, args=(key, index - 1), use_container_width=True)
-    forward.button("Next →" if index < last else "Last step", key=key + ":next", type="primary",
-                   disabled=index == last or not can_continue(), on_click=set_step, args=(key, index + 1), use_container_width=True)
+    if index < last:
+        forward.button("Next →", key=key + ":next", type="primary", disabled=not can_continue(),
+                       on_click=set_step, args=(key, index + 1), use_container_width=True)
+    elif finish:
+        label, can_finish, on_finish = finish
+        forward.button(label, key=key + ":finish", type="primary", disabled=not can_finish(), on_click=on_finish, use_container_width=True)
 
 
 def step_prompt(workspace):
@@ -273,16 +310,16 @@ def text_key(workspace, ref):
     return f"objtext:{workspace.name}:{ref['key']}:{ref['candidate_id']}"
 
 
-def save_objective(workspace, ref):
+def looks_good(workspace, ref):
     try:
-        svc.save_objective_draft(workspace, ref["key"], st.session_state[text_key(workspace, ref)])
+        svc.approve_item(workspace, ref["key"], st.session_state[text_key(workspace, ref)])
     except (ValueError, OSError) as exc:
-        st.session_state["edit_error"] = str(exc)
+        st.session_state["edit_error"] = svc.friendly_error(exc, workspace)
 
 
-def restore_original(workspace, ref):
+def reset_objective(workspace, ref):
     try:
-        svc.reset_draft(workspace, ref["key"])
+        svc.reset_item(workspace, ref["key"])
         st.session_state.pop(text_key(workspace, ref), None)
     except (ValueError, OSError) as exc:
         st.session_state["edit_error"] = str(exc)
@@ -297,53 +334,68 @@ def locate_next(ref):
     focus_reference(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"])
 
 
+MARKS = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
+
+
+def cited_passages(ref):
+    for number, source in enumerate(ref["sources"], 1):
+        usable = source["path"] and Path(source["path"]).is_file()
+        found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if usable else dict(status="unavailable")
+        where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
+        st.caption(f"{MARKS[found['status']]} {number}. {where} · {source['section'] or 'section not given'} — {pdf_locate.LABELS[found['status']]}")
+        st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+
+
 def step_references(workspace):
     references = svc.objective_references(workspace)
-    st.caption("Edit the wording if needed and save it as a draft. Saving does not approve anything. Use Locate reference to see the cited passage in the PDF; a match only shows where the text was found, so you still read and verify it.")
-    marks = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
+    st.caption("Check each objective against the PDF (Locate reference), correct the wording if needed, then click Looks good. A match only shows where the text was found; you still read and verify it.")
     for identifier, heading in svc.OBJECTIVE_GROUPS:
         st.markdown("#### " + heading)
-        group = [r for r in references if r["key"].startswith(identifier + "/")]
+        group = [r for r in references if r["group"] == identifier]
         if not group:
             st.caption("None returned.")
         for ref in group:
-            with st.container(border=True):
-                box = text_key(workspace, ref)
-                st.session_state.setdefault(box, ref["text"])
-                st.markdown("**" + ref["label"] + "**")
+            box = text_key(workspace, ref)
+            st.session_state.setdefault(box, ref["text"])
+            unsaved = st.session_state[box] != ref["text"]
+            done = ref["approved"] and not ref["flag"] and not unsaved
+            icon = "🚩 " if ref["flag"] else "✅ " if done else ""
+            with st.expander(icon + ref["name"], expanded=not done):
+                if ref["flag"]:
+                    st.error("Flagged while checking the memo" + (": " + ref["flag"]["note"] if ref["flag"]["note"] else ".") + " Fix the wording, then click Looks good again.")
                 if ref["status"] != "found":
-                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + " The box is empty; type the objective in if you find it yourself.")
+                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + " The box is empty; type the objective in if you find it yourself, or click Looks good to confirm there is none.")
                 st.text_area("Objective wording", key=box, height=120, label_visibility="collapsed")
-                if st.session_state[box] != ref["text"]:
-                    st.caption("🟠 Unsaved changes")
-                elif ref["has_draft"] and ref["edited"]:
-                    st.caption("✏️ Edited draft saved (not approved)")
-                else:
-                    st.caption("As extracted by Elsa" if ref["status"] == "found" else "Nothing saved")
-                save, locate, restore = st.columns([1, 1, 1])
-                save.button("Save edits", key="save:" + box, on_click=save_objective, args=(workspace, ref), use_container_width=True)
+                if unsaved:
+                    st.caption("🟠 Changes not confirmed yet. Click Looks good to keep them.")
+                good, locate, _, reset = st.columns([1.3, 1.5, 2.2, 0.6])
+                good.button("Looks good", key="good:" + box, type="primary", on_click=looks_good, args=(workspace, ref), use_container_width=True)
                 locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
                               help=None if ref["sources"] else "Elsa cited no passage for this item.")
-                if ref["has_draft"]:
-                    restore.button("Restore Elsa's text", key="restore:" + box, on_click=restore_original, args=(workspace, ref), use_container_width=True)
+                reset.button("↻", key="reset:" + box, on_click=reset_objective, args=(workspace, ref), use_container_width=True,
+                             help="Reset to Elsa's original text and clear any approval or flag")
                 if ref["sources"]:
                     with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
-                        for number, source in enumerate(ref["sources"], 1):
-                            usable = source["path"] and Path(source["path"]).is_file()
-                            found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if usable else dict(status="unavailable")
-                            where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
-                            st.caption(f"{marks[found['status']]} {number}. {where} · {source['section'] or 'section not given'} — {pdf_locate.LABELS[found['status']]}")
-                            st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
-                    if len(ref["sources"]) > 1:
-                        st.caption("Locate reference steps through these passages one click at a time.")
+                        cited_passages(ref)
+                        if len(ref["sources"]) > 1:
+                            st.caption("Locate reference steps through these passages one click at a time.")
+
+
+def finish_section(workspace, number):
+    try:
+        svc.complete_section(workspace, number)
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
 
 
 def objectives_section(workspace):
+    number = svc.OBJECTIVES_SECTION
     stepper(workspace, "objectives", [
         ("Prompt for Elsa", lambda: step_prompt(workspace), lambda: svc.objectives_request(workspace) is not None),
         ("Bring Elsa's response back", lambda: step_response(workspace), lambda: bool(svc.objective_references(workspace))),
-        ("References", lambda: step_references(workspace), lambda: False),
-    ])
+        ("Check each objective", lambda: step_references(workspace), lambda: False),
+    ], finish=("Finish this section ✓", lambda: bool(svc.objective_references(workspace)) and all(r["approved"] and not r["flag"] for r in svc.objective_references(workspace)),
+               lambda: finish_section(workspace, number)))
 
 
 def review_workspace(workspace):
@@ -354,36 +406,82 @@ def review_workspace(workspace):
         pdf_panel(workspace)
     with right:
         st.subheader("Template sections")
-        with st.container(height=900):
+        with st.container(height=820):
             for section in catalog["sections"]:
                 number, title = section["number"], section["title"].rstrip(": ")
                 active = number == svc.OBJECTIVES_SECTION
-                with st.expander(f"{number}. {title}", expanded=active):
+                done = active and svc.section_done(workspace, number)
+                with st.expander(("✅ " if done else "") + f"{number}. {title}", expanded=active and not done):
                     if active:
                         objectives_section(workspace)
                     else:
                         st.caption("Not available in this workspace yet.")
+        st.button("Continue to Export →", type="primary", on_click=navigate, args=("Export",),
+                  disabled=not svc.section_done(workspace, svc.OBJECTIVES_SECTION), use_container_width=True,
+                  help=None if svc.section_done(workspace, svc.OBJECTIVES_SECTION) else "Finish the section above first.")
 
 
-def export(workspace):
-    st.header("Export your memo")
+def flag_objective(workspace, ref):
+    try:
+        svc.flag_item(workspace, ref["key"], st.session_state.get("flagnote:" + ref["key"], ""))
+        st.session_state.pop("flagnote:" + ref["key"], None)
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
+
+
+def check_objective(workspace, ref):
+    try:
+        svc.mark_checked(workspace, ref["key"])
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
+
+
+def memo_check(workspace):
+    items = svc.memo_items(workspace)
+    if not items:
+        st.info("Nothing to check yet. Finish a section in the Review workspace first.")
+        st.button("← Back to Review workspace", on_click=navigate, args=("Review workspace",))
+        return False
+    flagged = [r for r in items if r["flag"]]
+    unchecked = [r for r in items if not r["checked"] and not r["flag"]]
+    st.caption("This is what the memo will say. Click Locate reference to see each statement's source in the PDF, then mark it Looks right, or flag a problem.")
+    st.progress((len(items) - len(unchecked)) / len(items), text=f"{len(items) - len(unchecked)} of {len(items)} checked")
+    with st.container(height=560):
+        for identifier, heading in svc.OBJECTIVE_GROUPS:
+            group = [r for r in items if r["group"] == identifier]
+            if not group:
+                continue
+            st.markdown("#### " + heading)
+            for ref in group:
+                with st.container(border=True):
+                    status = "🚩 Flagged" if ref["flag"] else "✅ Checked" if ref["checked"] else "Not checked yet"
+                    st.markdown(f"**{ref['name']}** · {status}")
+                    st.write(ref["text"])
+                    if ref["flag"] and ref["flag"]["note"]:
+                        st.caption("Your note: " + ref["flag"]["note"])
+                    st.text_input("Note (optional)", key="flagnote:" + ref["key"], placeholder="What looks wrong? (optional)", label_visibility="collapsed")
+                    locate, good, flag = st.columns(3)
+                    locate.button("Locate reference", key="mlocate:" + ref["key"], on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True)
+                    good.button("Looks right", key="mgood:" + ref["key"], on_click=check_objective, args=(workspace, ref), use_container_width=True)
+                    flag.button("Flag a problem", key="mflag:" + ref["key"], on_click=flag_objective, args=(workspace, ref), use_container_width=True)
+    sections = sa.catalog(workspace)["sections"]
+    pending = [str(s["number"]) for s in sections if not (s["number"] == svc.OBJECTIVES_SECTION and svc.section_done(workspace, s["number"]))]
+    st.caption("Sections not reviewed in this app yet (shown as pending in the draft memo): " + ", ".join(pending) + ".")
+    if flagged:
+        st.warning(f"{len(flagged)} flagged. Go back to the Review workspace to fix them; they are reopened there.")
+    back, ready = st.columns(2)
+    back.button("← Back to Review workspace to edit", on_click=navigate, args=("Review workspace",), type="primary" if flagged else "secondary", use_container_width=True)
+    ready.button("All Set ✓", type="primary", disabled=bool(flagged or unchecked), on_click=svc.mark_export_ready, args=(workspace,), use_container_width=True,
+                 help=None if not (flagged or unchecked) else "Check every statement, and resolve any flags, first.")
+    return True
+
+
+def export_downloads(workspace):
+    st.success("Everything checked. The memo is ready to export.")
     blockers = sa.readiness(workspace)
     if blockers:
-        st.info(f"{len(blockers)} items still need attention. You can download a draft now.")
-        with st.expander("Go to unfinished work"):
-            seen = set()
-            fields = sa.fields(workspace)
-            for message in blockers:
-                matched = next((f for identifier, f in fields.items() if identifier in message), None)
-                if matched and matched["section"] not in seen:
-                    seen.add(matched["section"])
-                    st.button("Review " + str(matched["section"]) + ": " + next(s["title"] for s in sa.catalog(workspace)["sections"] if s["number"] == matched["section"]), key="block:" + str(matched["section"]), on_click=navigate, args=("Review workspace",))
-                elif not matched:
-                    st.write(svc.friendly_error(message, workspace))
+        st.info("Sections not yet built in this app are marked pending, so you can download a draft now. The final Word memo unlocks once every section is reviewed.")
     _, body, _ = sa.assemble(workspace)
-    with st.expander("Memo preview", expanded=True):
-        with st.container(height=440):
-            st.markdown(body)
     config = sa.read_json(workspace / "review.json")
     pandoc = shutil.which("pandoc")
     with st.expander("Word settings"):
@@ -411,40 +509,35 @@ def export(workspace):
         path = Path(saved[0])
         if path.exists() and saved[1:] == (sa.object_hash(sa.load(workspace)), sa.object_hash(sa.read_json(workspace / "review.json"))):
             st.download_button("Download " + ("final" if "final" in path.stem else "draft") + " Word", path.read_bytes(), file_name=path.name, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-    with st.expander("Other downloads"):
-        st.download_button("Download draft Markdown", body, file_name="review-draft.md", mime="text/markdown")
+    st.download_button("Download draft Markdown", body, file_name="review-draft.md", mime="text/markdown")
+
+
+def export(workspace):
+    st.header("Check and export your memo")
+    left, right = st.columns([1.1, 1], gap="large")
+    with left:
+        pdf_panel(workspace)
+    with right:
+        st.subheader("Memo check")
+        has_items = memo_check(workspace)
+    if has_items and svc.export_ready(workspace):
+        st.divider()
+        export_downloads(workspace)
 
 
 def main():
     if "next_screen" in st.session_state:
         st.session_state["screen"] = st.session_state.pop("next_screen")
-    if "next_section" in st.session_state:
-        st.session_state["section"] = st.session_state.pop("next_section")
     st.session_state.setdefault("screen", "Set up")
-    found = svc.list_reviews()
-    paths = [str(r["path"]) for r in found]
-    active = st.session_state.get("workspace")
-    with st.sidebar:
-        st.title("Protocol Review")
-        st.caption("Saved on this computer")
-        options = [""] + paths
-        names = {str(r["path"]): r["name"] + (" (legacy)" if r["legacy"] else "") for r in found}
-        def switch():
-            st.session_state["workspace"] = st.session_state["review_picker"] or None
-            navigate("Set up")
-            st.session_state.pop("source_id", None)
-            st.session_state.pop("source_version", None)
-            for stale in ("highlight", "pdf_page", "full_pdf"):
-                st.session_state.pop(stale, None)
-        if "review_picker" not in st.session_state:
-            st.session_state["review_picker"] = active if active in paths else ""
-        selected = st.selectbox("Saved review", options, format_func=lambda p: names.get(p, "New review"), key="review_picker", on_change=switch)
-        if selected:
-            st.session_state["workspace"] = selected
-        st.radio("Workspace", SCREENS, key="screen")
     workspace = Path(st.session_state["workspace"]) if st.session_state.get("workspace") else None
+    screen = st.session_state["screen"]
+    if screen != "Set up" and workspace is None:
+        screen = st.session_state["screen"] = "Set up"
+    st.markdown("### Protocol Review")
+    progress_indicator(screen)
     if workspace and not sa.active(workspace):
-        st.info("This review uses the legacy workflow, which this app does not open. See legacy/README.md for its command-line tool, or choose New review for the guided app.")
+        st.info("This review uses the legacy workflow, which this app does not open. See legacy/README.md for its command-line tool, or create a new review for the guided app.")
+        st.session_state.pop("workspace", None)
         return
     if workspace:
         st.caption(sa.read_json(workspace / "review.json").get("ui_name", workspace.name))
@@ -452,12 +545,8 @@ def main():
         st.success(st.session_state.pop("notice"))
     if st.session_state.get("edit_error"):
         st.error(st.session_state.pop("edit_error"))
-    screen = st.session_state["screen"]
     if screen == "Set up":
         setup(workspace)
-    elif workspace is None:
-        st.info("Create or select a review to continue.")
-        st.button("Set up a review →", on_click=navigate, args=("Set up",))
     elif screen == "Review workspace":
         review_workspace(workspace)
     else:

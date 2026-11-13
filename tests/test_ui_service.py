@@ -136,6 +136,44 @@ class UIServiceTests(unittest.TestCase):
         request_id = ui.prepare_objectives(workspace)
         self.assertIn("OBJECTIVES.EXPLORATORY", sa.load(workspace)["requests"][request_id]["fields"])
 
+    def test_item_approval_flag_and_section_lifecycle(self):
+        refs = {r["key"]: r for r in ui.objective_references(self.workspace)}
+        primary = "OBJECTIVES.PRIMARY/O_SCORE"
+        with self.assertRaisesRegex(ValueError, "Enter the objective wording"):
+            ui.approve_item(self.workspace, primary, "   ")
+        with self.assertRaises(ValueError):
+            ui.flag_item(self.workspace, primary, "premature")  # only approved wording can be flagged
+        for key, ref in refs.items():
+            ui.approve_item(self.workspace, key, ref["text"] + (" (edited)" if key == primary else ""))
+        approved = {r["key"]: r for r in ui.objective_references(self.workspace)}
+        self.assertTrue(all(r["approved"] for r in approved.values()))
+        self.assertTrue(approved[primary]["text"].endswith("(edited)"))
+        self.assertNotEqual(approved[primary]["original"], approved[primary]["text"])  # Elsa's text kept
+        self.assertFalse(ui.section_done(self.workspace, 3))  # approving items does not finish the section
+        ui.complete_section(self.workspace, 3)
+        self.assertTrue(ui.section_done(self.workspace, 3))
+        ui.flag_item(self.workspace, primary, "check the quote")
+        self.assertFalse(ui.section_done(self.workspace, 3))  # a flag removes the section check
+        ui.approve_item(self.workspace, primary, approved[primary]["text"])  # Looks good clears the flag
+        self.assertTrue(ui.section_done(self.workspace, 3))
+        ui.reset_item(self.workspace, primary)
+        self.assertFalse(ui.section_done(self.workspace, 3))
+        self.assertEqual(refs[primary]["original"], next(r for r in ui.objective_references(self.workspace) if r["key"] == primary)["text"])
+
+    def test_memo_check_and_export_ready_follow_the_memo_content(self):
+        for ref in ui.objective_references(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        keys = [r["key"] for r in ui.memo_items(self.workspace)]
+        self.assertTrue(keys and all(not r["checked"] for r in ui.memo_items(self.workspace)))
+        for key in keys:
+            ui.mark_checked(self.workspace, key)
+        self.assertTrue(all(r["checked"] for r in ui.memo_items(self.workspace)))
+        ui.mark_export_ready(self.workspace)
+        self.assertTrue(ui.export_ready(self.workspace))
+        ui.approve_item(self.workspace, keys[0], "Different wording")
+        self.assertFalse(ui.export_ready(self.workspace))  # changed content must be re-checked
+        self.assertFalse(next(r for r in ui.memo_items(self.workspace) if r["key"] == keys[0])["checked"])
+
 
 if __name__ == "__main__":
     unittest.main()

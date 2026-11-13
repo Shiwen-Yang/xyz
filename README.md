@@ -12,11 +12,11 @@ Needs Python 3.10+ (with `python3-venv` on Ubuntu/Debian: `sudo apt install pyth
 
 Windows launchers (`.bat`) are kept in `legacy/windows/`.
 
-The app has three screens:
+The app follows one fixed workflow, with a progress indicator along the top (Set up → Review workspace → Export):
 
-1. **Set up** — create a review and upload the protocol/background PDFs once.
-2. **Review workspace** — the source PDF on the left; the template's 13 sections on the right. **Primary Objective(s)** is the first section built. It walks through three steps, one at a time with Back/Next buttons: copy the prompt for Elsa, load Elsa's JSON (from your downloads folder, an upload, or pasted text), then review each extracted objective in an editable box, saving edits as drafts and using **Locate reference** to jump the PDF to the cited passage and highlight it. Elsa sorts objectives into primary, secondary, and other (exploratory etc.). Each reference shows whether its excerpt was found on the cited page. This screen is read-only: editing and approving answers returns as more sections are built, and the other sections are listed as not yet available.
-3. **Export** — download Markdown at any time or create a draft/final Word memo when Pandoc is available.
+1. **Set up** — create a review (or continue a saved one) and upload the protocol/background PDFs once.
+2. **Review workspace** — the source PDF on the left; the template's 13 sections on the right. **Primary Objective(s)** is the first section built. It walks through three steps with Back/Next buttons: copy the prompt for Elsa, load Elsa's JSON (from your downloads folder, an upload, or pasted text), then check each extracted objective. Every objective is a collapsible bulletin with an editable box: **Locate reference** jumps the PDF to the cited passage and highlights it, **Looks good** approves the wording (the bulletin collapses with a check mark), and **↻** resets it to Elsa's text. Finishing the section puts a green check on its header.
+3. **Export** — a memo check with the PDF beside it. Each bulletin the memo will contain can be located in the PDF, marked **Looks right**, or flagged; a flagged bulletin is reopened in the Review workspace. When every bulletin is checked and none is flagged, **All Set** unlocks Markdown and Word downloads (Word needs Pandoc).
 
 Start with **Try fictional example** to learn the review controls without a protocol or Elsa. It loads simulated results and approves nothing. The app runs only on the local loopback address, has no Elsa API integration, and disables Streamlit usage telemetry.
 
