@@ -6,18 +6,17 @@ A guided, local workflow for using Elsa to retrieve protocol facts, verify every
 
 Needs Python 3.10+ (with `python3-venv` on Ubuntu/Debian: `sudo apt install python3-venv`). Keep the project on the Linux filesystem (e.g. under `~`), not under `/mnt/c`.
 
-1. Run `./setup_ui.sh` once. It creates an isolated `.venv` and installs the two direct UI packages in `requirements-ui.txt` plus their required dependencies.
+1. Run `./setup_ui.sh` once. It creates an isolated `.venv` and installs the three direct UI packages in `requirements-ui.txt` plus their required dependencies.
 2. Run `./start_ui.sh` whenever you want to work. It serves the app at `http://127.0.0.1:8501` and tries to open your browser. In WSL2 that address is forwarded to your Windows browser; if no browser opens, visit it manually (`sudo apt install wslu` lets the launcher open the Windows browser itself).
 3. Keep the terminal open while using the app; Ctrl+C stops it. Saved work remains under `reviews/`.
 
 Windows launchers (`.bat`) are kept in `legacy/windows/`.
 
-The app has four screens:
+The app has three screens:
 
 1. **Set up** — create a review and upload the protocol/background PDFs once.
-2. **Exchange with Elsa** — prepare a small extraction request, take the instructions and PDFs to Elsa, then load Elsa's JSON response.
-3. **Review sections** — edit answers, inspect the cited PDF page, save drafts, and explicitly approve a whole section.
-4. **Export** — download Markdown at any time or create a draft/final Word memo when Pandoc is available.
+2. **Review workspace** — the source PDF on the left; the template's 13 sections on the right. **Primary Objective(s)** is the first section built: copy the prompt for Elsa, load Elsa's JSON (from your downloads folder, an upload, or pasted text), then click a reference to jump the PDF to that passage and highlight it. Each reference shows whether its excerpt was found on the cited page. This screen is read-only: editing and approving answers returns as more sections are built, and the other sections are listed as not yet available.
+3. **Export** — download Markdown at any time or create a draft/final Word memo when Pandoc is available.
 
 Start with **Try fictional example** to learn the review controls without a protocol or Elsa. It loads simulated results and approves nothing. The app runs only on the local loopback address, has no Elsa API integration, and disables Streamlit usage telemetry.
 

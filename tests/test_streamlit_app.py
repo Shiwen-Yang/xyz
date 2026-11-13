@@ -19,6 +19,10 @@ if HAS_UI:
     from streamlit.testing.v1 import AppTest
 
 
+def svc_request(workspace):
+    return ui.objectives_request(workspace)
+
+
 @unittest.skipUnless(HAS_UI, "Install requirements-ui.txt to run Streamlit interaction tests")
 class StreamlitTests(unittest.TestCase):
     def setUp(self):
@@ -46,80 +50,73 @@ class StreamlitTests(unittest.TestCase):
         self.assert_clean(app)
         return app, Path(app.session_state["workspace"])
 
-    def test_new_review_upload_pdf_prepare_and_invalid_response(self):
+    def objectives_payload(self, request_id, page=1, excerpt="Primary Objective(s):"):
+        def record(instance, value):
+            return dict(instance_id=instance, status="found", value=value, explanation="", sources=[dict(
+                document_id="PROTOCOL", pdf_page=page, printed_page=None, section="Objectives", exact_excerpt=excerpt)])
+        return dict(schema_version=1, catalog_version=1, request_id=request_id, search_scope="Test PDF only.",
+                    entities=[dict(id="P1", kind="primary_objective", label="Primary objective 1"),
+                              dict(id="S1", kind="secondary_objective", label="Secondary objective 1")],
+                    fields={"OBJECTIVES.PRIMARY": [record("P1", excerpt)], "OBJECTIVES.OTHER": [record("S1", excerpt)]})
+
+    def workspace_with_pdf(self):
         app = self.start()
         app.text_input[0].input("Study review")
         app.text_input[1].input("Reviewer")
         self.button(app, "Create review").click().run()
-        self.assert_clean(app)
-        workspace = Path(app.session_state["workspace"])
         pdf = (ROOT / "tests/fixtures/sample.pdf").read_bytes()
         app.file_uploader[0].set_value(("protocol.pdf", pdf, "application/pdf"))
         self.button(app, "Save documents").click().run()
         self.assert_clean(app)
-        self.assertEqual(pdf, Path(sa.load(workspace)["sources"]["PROTOCOL"]["path"]).read_bytes())
-        self.button(app, "Next: exchange with Elsa →").click().run()
-        self.button(app, "Prepare instructions").click().run()
+        self.button(app, "Next: review workspace →").click().run()
         self.assert_clean(app)
-        self.assertTrue(app.code)
-        downloads = app.get("download_button")
-        self.assertTrue(any(d.label == "Download instructions" for d in downloads))
-        app.file_uploader[0].set_value(("bad.json", b'{}', "application/json"))
-        self.button(app, "Load response").click().run()
+        return app, Path(app.session_state["workspace"])
+
+    def test_prepare_prompt_then_reject_bad_response(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
         self.assert_clean(app)
+        request_id = svc_request(workspace)
+        self.assertTrue(any(request_id in code.value for code in app.code))
+        app.text_area(key=f"paste:{workspace.name}").input("{}").run()
+        self.button(app, "Load pasted JSON").click().run()
         self.assertTrue(app.error)
         self.assertEqual({}, sa.load(workspace)["imports"])
 
-    def test_edit_navigate_reopen_and_approve_whole_section(self):
-        app, workspace = self.demo()
-        app.text_area[0].input("Reviewer edited primary objective").run()
-        app.radio[0].set_value("Export").run()
+    def test_load_from_downloads_folder_lists_references_and_highlights(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
+        request_id = svc_request(workspace)
+        downloads = Path(self.temp.name) / "downloads"
+        downloads.mkdir()
+        (downloads / ui.elsa_filename(request_id)).write_text(json.dumps(self.objectives_payload(request_id)))
+        app.text_input(key=f"folder:{workspace.name}").input(str(downloads)).run()
+        self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
-        self.assertTrue(self.button(app, "Create final Word").disabled)
-        app.radio[0].set_value("Review sections").run()
-        self.assertEqual("Reviewer edited primary objective", app.text_area[0].value)
-        self.button(app, "Approve section and continue →").click().run()
+        self.assertEqual(2, len(sa.load(workspace)["candidates"]))
+        self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
+        reference = next(b for b in app.button if b.key.startswith("ref:OBJECTIVES.PRIMARY"))
+        reference.click().run()
         self.assert_clean(app)
-        self.assertEqual(4, app.session_state["section"])
-        self.assertEqual(3, len(sa.load(workspace)["reviewed"]))
-        reopened = self.start()
-        reopened.selectbox(key="review_picker").set_value(str(workspace)).run()
-        reopened.radio[0].set_value("Review sections").run()
-        self.assert_clean(reopened)
-        self.assertEqual("Reviewer edited primary objective", reopened.text_area[0].value)
+        args = json.loads(app.get("component_instance")[-1].proto.json_args)
+        self.assertEqual([1], args["pages_to_render"])
+        self.assertTrue(args["annotations"])
+        self.assertEqual(1, args["annotations"][0]["page"])
 
-    def test_load_response_again_does_not_duplicate_and_retains_edits(self):
-        app, workspace = self.demo()
-        app.text_area[0].input("Saved before reimport").run()
-        app.radio[0].set_value("Exchange with Elsa").run()
-        app.file_uploader[0].set_value(("response.json", (workspace / "simulated_elsa_response.json").read_bytes(), "application/json"))
-        self.button(app, "Load response").click().run()
-        self.assert_clean(app)
-        self.assertEqual(16, len(sa.load(workspace)["candidates"]))
-        self.assertEqual("Saved before reimport", app.text_area[0].value)
+    def test_missing_download_reports_the_expected_file_name(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
+        app.text_input(key=f"folder:{workspace.name}").input(self.temp.name).run()
+        self.button(app, "Load response from this folder").click().run()
+        self.assertIn(ui.elsa_filename(svc_request(workspace)), app.error[0].value)
 
-    def test_pdf_panel_receives_the_cited_page_and_local_pdf(self):
-        workspace = ui.create_review("PDF panel", "Reviewer")
-        pdf = (ROOT / "tests/fixtures/sample.pdf").read_bytes()
-        ui.store_source(workspace, "protocol.pdf", pdf, "protocol")
-        request_id = ui.create_request(workspace, 0)
-        payload = sa.read_json(ROOT / "examples/stage_a/elsa_pilot_response.json")
-        payload["request_id"] = request_id
-        for records in payload["fields"].values():
-            for record in records:
-                record["sources"][0]["pdf_page"] = 2
-        ui.import_bytes(workspace, json.dumps(payload).encode())
-        app = self.start()
-        app.selectbox(key="review_picker").set_value(str(workspace)).run()
-        app.radio[0].set_value("Review sections").run()
-        self.button(app, "View source").click().run()
+    def test_other_sections_are_listed_but_not_yet_available(self):
+        app, workspace = self.demo()
+        app.radio[0].set_value("Review workspace").run()
         self.assert_clean(app)
-        self.assertEqual(2, app.number_input[0].value)
-        component = app.get("component_instance")[0]
-        args = json.loads(component.proto.json_args)
-        self.assertEqual([2], args["pages_to_render"])
-        self.assertTrue(args["binary"])
-        self.assertTrue(args["render_text"])
+        labels = [e.label for e in app.expander if e.label[0].isdigit()]
+        self.assertEqual(13, len(labels))
+        self.assertIn("3. Primary Objective(s)", labels)
 
     @unittest.skipUnless(os.environ.get("PANDOC") or shutil.which("pandoc"), "Set PANDOC for Word download control test")
     def test_word_generation_exposes_download_control(self):

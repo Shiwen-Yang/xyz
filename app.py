@@ -1,5 +1,6 @@
 """A local, guided workspace for statistical review memos."""
 from pathlib import Path
+import json
 import shutil
 import sys
 
@@ -7,10 +8,11 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
+import pdf_locate
 import stage_a as sa
 import ui_service as svc
 
-SCREENS = ["Set up", "Exchange with Elsa", "Review sections", "Export"]
+SCREENS = ["Set up", "Review workspace", "Export"]
 st.set_page_config(page_title="Protocol Review", page_icon="📄", layout="wide")
 
 
@@ -35,37 +37,6 @@ def error(exc, workspace=None):
     st.error(svc.friendly_error(exc, workspace))
 
 
-def editor_key(workspace, item, kind):
-    return f"{kind}:{workspace.name}:{item['key']}"
-
-
-def save_item(workspace, item):
-    svc.save_draft(workspace, item["key"], st.session_state[editor_key(workspace, item, "text")],
-                   st.session_state[editor_key(workspace, item, "include")],
-                   st.session_state[editor_key(workspace, item, "reason")], item["candidate_id"], item["manual"])
-
-
-def on_edit(workspace, item):
-    try:
-        save_item(workspace, item)
-    except (ValueError, OSError) as exc:
-        st.session_state["edit_error"] = str(exc)
-
-
-def choose_proposal(workspace, item, selector):
-    try:
-        svc.choose_candidate(workspace, item["key"], st.session_state[selector])
-        for kind in ("text", "include", "reason"):
-            st.session_state.pop(editor_key(workspace, item, kind), None)
-    except (ValueError, OSError) as exc:
-        st.session_state["edit_error"] = str(exc)
-
-
-def source_click(version_key, page):
-    st.session_state["source_version"] = version_key
-    st.session_state["pdf_page"] = page or 1
-
-
 def setup(workspace):
     st.header("Set up your review")
     st.write("Add your documents once. Your work will be saved on this computer.")
@@ -82,7 +53,7 @@ def setup(workspace):
                 st.session_state["workspace"] = str(path)
                 st.session_state.pop("review_picker", None)
                 notice("Fictional results loaded for practice. No answers have been approved." if demo else "Review created. Add the main protocol below.")
-                move("Review sections" if demo else "Set up", 3 if demo else None)
+                move("Review workspace" if demo else "Set up")
             except (ValueError, OSError) as exc:
                 error(exc)
     if workspace is None:
@@ -124,68 +95,54 @@ def setup(workspace):
                 svc.store_source(workspace, main.name, main.getvalue(), "protocol", version, date)
             for source in background or []:
                 svc.store_source(workspace, source.name, source.getvalue(), "background")
-            notice("Documents saved. You can now prepare instructions for Elsa.")
+            notice("Documents saved. You can now prepare the prompt for Elsa.")
             st.rerun()
         except (ValueError, OSError) as exc:
             error(exc, workspace)
-    st.button("Next: exchange with Elsa →", on_click=navigate, args=("Exchange with Elsa",), disabled=not state["sources"])
+    st.button("Next: review workspace →", on_click=navigate, args=("Review workspace",), disabled=not state["sources"])
 
 
-def exchange(workspace):
-    st.header("Exchange with Elsa")
-    st.write("Get instructions here, use them in Elsa, then bring its response back to this screen.")
-    state = sa.load(workspace)
-    batch = st.selectbox("Information to extract", range(4), index=svc.recommended_batch(workspace),
-                         format_func=lambda n: svc.BATCHES[n][0], key="batch:" + workspace.name)
-    with st.expander("Choose individual fields (optional)"):
-        eligible = {k: f for k, f in sa.fields(workspace).items() if f["mode"] not in {"manual", "group"}}
-        selected = st.multiselect("Request only these fields instead", list(eligible),
-                                  format_func=lambda k: eligible[k]["label"], key="fields:" + workspace.name)
-    if st.button("Prepare instructions", type="primary"):
-        try:
-            request_id = svc.create_request(workspace, batch, ",".join(selected) if selected else None)
-            st.session_state["request:" + workspace.name] = request_id
-            notice("Instructions ready. Copy or download them below.")
-            st.rerun()
-        except (ValueError, OSError) as exc:
-            error(exc, workspace)
-    requests = list(reversed(state["requests"]))
-    if requests:
-        current = st.session_state.get("request:" + workspace.name)
-        request_id = st.selectbox("Saved instructions", requests, index=requests.index(current) if current in requests else 0,
-                                  format_func=lambda k: state["requests"][k]["created_at"][:16].replace("T", " ") + " · " + str(len(state["requests"][k]["fields"])) + " fields")
-        manifest = state["requests"][request_id]
-        instructions = (workspace / "stage_a/requests" / request_id / "instructions.md").read_text(encoding="utf-8")
-        st.subheader("1. Take these instructions to Elsa")
-        st.caption("The code box has a copy button in its upper-right corner. Attach the documents listed below in the same Elsa chat.")
-        with st.expander("Copy instructions", expanded=True):
-            st.code(instructions, language="markdown", height=220)
-        st.download_button("Download instructions", instructions, file_name="elsa-instructions.md", mime="text/markdown")
-        st.write("**Documents to attach in Elsa**")
-        for source_id, meta in manifest["sources"].items():
-            source = state["sources"].get(source_id)
-            st.write("• " + meta["filename"])
-            if source and sa.public_source(source) == meta and Path(source["path"]).is_file():
-                st.download_button("Download " + meta["filename"], Path(source["path"]).read_bytes(), file_name=meta["filename"],
-                                   key="docdl:" + source_id + request_id)
-    else:
-        st.info("Prepare instructions to start. Your PDFs must also be attached in Elsa.")
-    st.subheader("2. Bring back Elsa’s JSON response")
-    uploaded = st.file_uploader("Elsa response JSON", type=["json"], key="response:" + workspace.name)
-    if st.button("Load response", disabled=uploaded is None):
-        try:
-            run_id, created = svc.import_bytes(workspace, uploaded.getvalue())
-            new_state = sa.load(workspace)
-            request_id = new_state["imports"][run_id]["request_id"]
-            numbers = [v["section"] for v in new_state["requests"][request_id]["fields"].values()]
-            notice("Response loaded. Review and approve its answers below." if created else "This response is already loaded. Your previous work is unchanged.")
-            move("Review sections", min(numbers))
-        except (ValueError, OSError) as exc:
-            error(exc, workspace)
+@st.cache_data(show_spinner=False)
+def locate_excerpt(path, sha, page, excerpt):
+    return pdf_locate.locate(path, page, excerpt)
 
 
-def source_panel(workspace):
-    state = sa.load(workspace)
+def copy_button(text, label="Copy prompt to clipboard"):
+    """Browsers only allow clipboard writes from a click inside the page."""
+    payload = json.dumps(text).replace("</", "<\\/")
+    st.iframe("""
+<button id="b" style="font:600 14px system-ui;padding:8px 14px;border-radius:6px;border:1px solid #888;cursor:pointer">""" + label + """</button>
+<span id="s" style="font:14px system-ui;margin-left:10px"></span>
+<script>
+const text = """ + payload + """;
+const s = document.getElementById('s');
+function legacy() {
+  const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(t); return ok;
+}
+document.getElementById('b').onclick = async () => {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = legacy(); }
+  s.textContent = ok ? 'Copied.' : 'Your browser blocked copying - select the text below and copy it.';
+};
+</script>""", height=52)
+
+
+def focus_reference(version_key, path, page, excerpt):
+    """Button callback: aim the PDF panel at a cited passage and highlight it."""
+    found = locate_excerpt(path, svc_sha(path), page, excerpt) if path else dict(status="unavailable", page=page, rects=[])
+    shown = found["page"] if found["status"] in ("exact", "partial", "other_page") else (page or 1)
+    st.session_state["source_version"] = version_key
+    st.session_state["pdf_page"] = shown
+    st.session_state["highlight"] = dict(page=shown, rects=found["rects"], status=found["status"])
+
+
+def svc_sha(path):
+    return sa.file_hash(Path(path))
+
+
+def pdf_panel(workspace):
     sources = svc.source_versions(workspace)
     st.subheader("Source document")
     if not sources:
@@ -193,7 +150,8 @@ def source_panel(workspace):
         return
     if st.session_state.get("source_version") not in sources:
         st.session_state["source_version"] = next(iter(sources))
-    source_id = st.selectbox("Document", list(sources), format_func=lambda k: sources[k]["filename"] + " · v" + sources[k]["version"] + (" (earlier version)" if not sources[k]["current"] else ""), key="source_version")
+    source_id = st.selectbox("Document", list(sources), key="source_version",
+        format_func=lambda k: sources[k]["filename"] + " · v" + sources[k]["version"] + (" (earlier version)" if not sources[k]["current"] else ""))
     source = sources[source_id]
     path = Path(source["path"])
     if not path.exists():
@@ -208,91 +166,120 @@ def source_panel(workspace):
         return
     maximum = source["pdf_pages"]
     current = max(1, int(st.session_state.get("pdf_page", 1)))
-    if maximum and current > maximum:
-        st.session_state["pdf_page"] = maximum
-    else:
-        st.session_state.setdefault("pdf_page", current)
+    st.session_state["pdf_page"] = min(current, maximum) if maximum else current
     page = st.number_input("PDF page position", min_value=1, max_value=maximum, key="pdf_page")
     full = st.checkbox("Show full document", key="full_pdf")
-    pdf_viewer(path.read_bytes(), height=720, key="pdf:" + workspace.name + source_id + source["sha256"][:12] + (":full" if full else ":" + str(page)),
-               pages_to_render=[] if full else [page], render_text=True,
-               scroll_to_page=page if full else None, zoom_level="auto")
+    highlight = st.session_state.get("highlight") or {}
+    annotations = [dict(page=highlight["page"], color="#e6a700", border="solid", **r) for r in highlight.get("rects", [])] \
+        if highlight.get("page") else []
+    if highlight.get("status") == "not_found" and highlight.get("page") == page:
+        st.warning("The cited excerpt was not found in this page's text, so nothing is highlighted. Read the page directly.")
+    elif highlight.get("status") == "other_page" and highlight.get("page") == page:
+        st.info("This passage was found here, on a different page than Elsa cited.")
+    pdf_viewer(path.read_bytes(), height=720,
+               key="pdf:" + workspace.name + source_id + source["sha256"][:12] + (":full" if full else ":" + str(page)) + ":" + str(len(annotations)) + str(highlight.get("page")),
+               pages_to_render=[] if full else [page], annotations=annotations, annotation_outline_size=3,
+               scroll_to_page=page if full else None, render_text=True, zoom_level="auto")
     st.download_button("Download source PDF", path.read_bytes(), file_name=source["filename"], mime="application/pdf")
 
 
-def review_sections(workspace):
-    st.header("Review sections")
-    st.caption("Edits save locally when you leave a text box. Saving does not approve an answer.")
+def load_response(workspace, data):
+    try:
+        run_id, created = svc.import_bytes(workspace, data)
+        notice("Response loaded. Click a reference to see it in the PDF." if created else "This response is already loaded. Nothing changed.")
+        st.rerun()
+    except (ValueError, OSError, UnicodeDecodeError) as exc:
+        error(exc, workspace)
+
+
+def objectives_section(workspace):
     state = sa.load(workspace)
-    statuses = svc.section_statuses(workspace)
-    titles = {s["number"]: s["title"].rstrip(": ") for s in sa.catalog(workspace)["sections"]}
-    if "section" not in st.session_state:
-        st.session_state["section"] = 3
-    number = st.selectbox("Section", list(titles), format_func=lambda n: f"{n}. {titles[n]} — {statuses[n]}", key="section")
-    items = svc.section_items(workspace, number, state)
-    left, right = st.columns([1.1, 1], gap="large")
-    with left:
-        st.subheader(titles[number])
-        with st.container(height=730):
-            for item in items:
-                st.markdown("#### " + item["label"])
-                if item["missing"]:
-                    st.info("This field needs extraction from Elsa.")
-                    continue
-                if len(item["proposals"]) > 1:
-                    options = [p["id"] for p in reversed(item["proposals"])]
-                    chosen = item["candidate_id"]
-                    selector = editor_key(workspace, item, "proposal")
-                    st.selectbox("Answer to use", options, index=options.index(chosen), key=selector,
-                        format_func=lambda k: "Current accepted answer" if k == (item["accepted"] or {}).get("candidate_id") else "Proposal from " + state["candidates"][k]["imported_at"][:19].replace("T", " "),
-                        on_change=choose_proposal, args=(workspace, item, selector))
-                if item["candidate"]:
-                    record = item["candidate"]["record"]
-                    st.caption("Elsa: " + record["status"].replace("_", " ") + " · " + item["field"]["mode"])
-                    if record["explanation"]:
-                        st.write(record["explanation"])
-                else:
-                    st.caption("Your assessment — not extracted by Elsa")
-                for kind, value in (("text", item["text"]), ("include", item["include"]), ("reason", item["reason"])):
-                    st.session_state.setdefault(editor_key(workspace, item, kind), value)
-                st.text_area("Memo wording", height=150, key=editor_key(workspace, item, "text"), on_change=on_edit, args=(workspace, item))
-                st.checkbox("Include in memo", key=editor_key(workspace, item, "include"), on_change=on_edit, args=(workspace, item), disabled=bool(item["candidate"] and item["candidate"]["record"]["status"] == "not_applicable"))
-                needs_reason = not st.session_state[editor_key(workspace, item, "include")] or bool(item["candidate"] and item["candidate"]["record"]["status"] != "found")
-                st.text_input("Reason / disposition" + (" (required)" if needs_reason else " (optional)"), key=editor_key(workspace, item, "reason"), on_change=on_edit, args=(workspace, item))
-                if item["candidate"]:
-                    for index, source in enumerate(item["candidate"]["record"]["sources"]):
-                        with st.expander("Evidence · " + (source["section"] or "Section unavailable"), expanded=True):
-                            st.write(source["exact_excerpt"])
-                            metadata = state["requests"][item["candidate"]["request_id"]]["sources"][source["document_id"]]
-                            st.caption(f"Version: {metadata['version']} · PDF position: {source['pdf_page'] or 'unavailable'} · Printed label: {source['printed_page'] or 'unavailable'}")
-                            st.button("View source", key=editor_key(workspace, item, "source") + str(index), on_click=source_click, args=(sa.object_hash(metadata), source["pdf_page"]))
-                    with st.expander("Original proposal and search details"):
-                        st.write(item["candidate"]["record"]["value"] or "No proposed value")
-                        st.caption(item["candidate"]["search_scope"])
-                st.divider()
-        reviewer = sa.read_json(workspace / "review.json").get("ui_reviewer", "")
-        save_col, approve_col = st.columns([1, 1.5])
-        save_clicked = save_col.button("Save section draft")
-        approve = approve_col.button("Approve section and continue →", type="primary", disabled=any(i["missing"] for i in items))
-        if save_clicked or approve:
+    request_id = svc.objectives_request(workspace)
+    st.markdown("**1 · Prompt for Elsa**")
+    if not request_id:
+        st.caption("Asks Elsa for every primary and secondary objective, quoted word for word, with its source page.")
+        if st.button("Prepare prompt", type="primary", key="prepare:" + workspace.name):
             try:
-                for item in items:
-                    if not item["missing"]:
-                        save_item(workspace, item)
-                if approve:
-                    svc.approve_section(workspace, number, reviewer)
-                    notice(titles[number] + " approved.")
-                    screen, next_number, batch = svc.next_step(workspace)
-                    st.session_state["batch:" + workspace.name] = batch
-                    move(screen, next_number)
-                notice("Section draft saved. It has not been approved.")
+                svc.prepare_objectives(workspace)
                 st.rerun()
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
-        if any(i["missing"] for i in items):
-            st.button("Get instructions for Elsa →", on_click=navigate, args=("Exchange with Elsa",))
+        return
+    prompt = svc.elsa_prompt(workspace, request_id)
+    manifest = state["requests"][request_id]
+    copy_button(prompt)
+    with st.expander("Show prompt text (fallback if copying is blocked)"):
+        st.code(prompt, language="markdown", height=220)
+        st.download_button("Download prompt", prompt, file_name="elsa-prompt.md", mime="text/markdown", key="promptdl:" + request_id)
+    st.caption("Paste it into Elsa and attach these documents in the same chat:")
+    for source_id, meta in manifest["sources"].items():
+        source = state["sources"].get(source_id)
+        columns = st.columns([3, 1])
+        columns[0].write("• " + meta["filename"])
+        if source and Path(source["path"]).is_file():
+            columns[1].download_button("Download", Path(source["path"]).read_bytes(), file_name=meta["filename"], key="docdl:" + source_id + request_id)
+    filename = svc.elsa_filename(request_id)
+    st.markdown("**2 · Bring Elsa's response back**")
+    st.caption("Ask Elsa to download its JSON; the prompt names the file `" + filename + "`.")
+    folder_tab, upload_tab, paste_tab = st.tabs(["Downloads folder", "Upload file", "Paste JSON"])
+    with folder_tab:
+        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key="folder:" + workspace.name)
+        if st.button("Load response from this folder", type="primary", key="loadfolder:" + workspace.name):
+            try:
+                found = svc.find_download(folder, request_id)
+                svc.remember_download_dir(workspace, folder)
+                load_response(workspace, found.read_bytes())
+            except (ValueError, OSError) as exc:
+                error(exc, workspace)
+    with upload_tab:
+        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key="upload:" + workspace.name)
+        if st.button("Load uploaded file", disabled=uploaded is None, key="loadupload:" + workspace.name):
+            load_response(workspace, uploaded.getvalue())
+    with paste_tab:
+        pasted = st.text_area("Paste Elsa's JSON", height=140, key="paste:" + workspace.name)
+        if st.button("Load pasted JSON", disabled=not pasted.strip(), key="loadpaste:" + workspace.name):
+            load_response(workspace, pasted.encode("utf-8"))
+    st.markdown("**3 · References**")
+    references = svc.objective_references(workspace)
+    if not references:
+        st.caption("Nothing loaded yet.")
+        return
+    st.caption("Click a reference to open the PDF at that passage. A match only shows where the text was found; you still read and verify it.")
+    marks = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
+    for ref in references:
+        with st.container(border=True):
+            st.markdown("**" + ref["label"] + "**")
+            if ref["value"]:
+                st.write(ref["value"])
+            else:
+                st.caption(ref["status"].replace("_", " ").capitalize() + (" — " + ref["explanation"] if ref["explanation"] else ""))
+            for index, source in enumerate(ref["sources"]):
+                found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if source["path"] and Path(source["path"]).is_file() else dict(status="unavailable")
+                where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
+                st.button(f"{marks[found['status']]} {where} · {source['section'] or 'section not given'}", key=f"ref:{ref['key']}:{index}",
+                          help=pdf_locate.LABELS[found["status"]], on_click=focus_reference,
+                          args=(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"]))
+                st.caption(pdf_locate.LABELS[found["status"]])
+                st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+
+
+def review_workspace(workspace):
+    st.header("Review workspace")
+    catalog = sa.catalog(workspace)
+    left, right = st.columns([1.1, 1], gap="large")
+    with left:
+        pdf_panel(workspace)
     with right:
-        source_panel(workspace)
+        st.subheader("Template sections")
+        with st.container(height=900):
+            for section in catalog["sections"]:
+                number, title = section["number"], section["title"].rstrip(": ")
+                active = number == svc.OBJECTIVES_SECTION
+                with st.expander(f"{number}. {title}", expanded=active):
+                    if active:
+                        objectives_section(workspace)
+                    else:
+                        st.caption("Not available in this workspace yet.")
 
 
 def export(workspace):
@@ -307,7 +294,7 @@ def export(workspace):
                 matched = next((f for identifier, f in fields.items() if identifier in message), None)
                 if matched and matched["section"] not in seen:
                     seen.add(matched["section"])
-                    st.button("Review " + str(matched["section"]) + ": " + next(s["title"] for s in sa.catalog(workspace)["sections"] if s["number"] == matched["section"]), key="block:" + str(matched["section"]), on_click=navigate, args=("Review sections", matched["section"]))
+                    st.button("Review " + str(matched["section"]) + ": " + next(s["title"] for s in sa.catalog(workspace)["sections"] if s["number"] == matched["section"]), key="block:" + str(matched["section"]), on_click=navigate, args=("Review workspace",))
                 elif not matched:
                     st.write(svc.friendly_error(message, workspace))
     _, body, _ = sa.assemble(workspace)
@@ -364,7 +351,8 @@ def main():
             navigate("Set up")
             st.session_state.pop("source_id", None)
             st.session_state.pop("source_version", None)
-            st.session_state.pop("section", None)
+            for stale in ("highlight", "pdf_page", "full_pdf"):
+                st.session_state.pop(stale, None)
         if "review_picker" not in st.session_state:
             st.session_state["review_picker"] = active if active in paths else ""
         selected = st.selectbox("Saved review", options, format_func=lambda p: names.get(p, "New review"), key="review_picker", on_change=switch)
@@ -377,10 +365,6 @@ def main():
         return
     if workspace:
         st.caption(sa.read_json(workspace / "review.json").get("ui_name", workspace.name))
-        statuses = svc.section_statuses(workspace)
-        done = sum(v == "Approved" for v in statuses.values())
-        with st.sidebar:
-            st.progress(done / 13, text=f"{done} of 13 sections approved")
     if st.session_state.get("notice"):
         st.success(st.session_state.pop("notice"))
     if st.session_state.get("edit_error"):
@@ -391,10 +375,8 @@ def main():
     elif workspace is None:
         st.info("Create or select a review to continue.")
         st.button("Set up a review →", on_click=navigate, args=("Set up",))
-    elif screen == "Exchange with Elsa":
-        exchange(workspace)
-    elif screen == "Review sections":
-        review_sections(workspace)
+    elif screen == "Review workspace":
+        review_workspace(workspace)
     else:
         export(workspace)
 

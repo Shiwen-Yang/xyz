@@ -19,6 +19,8 @@ BATCHES = [("Objectives, design and endpoints", "3,4,5"),
            ("Hypotheses and analyses", "6,7,8"),
            ("Background, interim plans and sample size", "2,9,10"),
            ("Factual executive summary", "1")]
+OBJECTIVE_FIELDS = "OBJECTIVES.PRIMARY,OBJECTIVES.OTHER"
+OBJECTIVES_SECTION = 3
 _LOCK = threading.RLock()
 
 
@@ -155,6 +157,93 @@ def create_request(workspace, batch, custom_fields=None):
         sa.save(workspace, state)
         sa.write_json(workspace / "stage_a/requests" / request_id / "manifest.json", manifest)
         return request_id
+
+
+def objectives_request(workspace):
+    """Return the latest still-valid request for the objectives fields, else None."""
+    state = sa.load(workspace)
+    sources = {k: sa.public_source(v) for k, v in state["sources"].items()}
+    for request_id, manifest in reversed(list(state["requests"].items())):
+        if manifest.get("ui_custom_fields") == OBJECTIVE_FIELDS and manifest["sources"] == sources:
+            return request_id
+    return None
+
+
+def prepare_objectives(workspace):
+    return create_request(workspace, 0, OBJECTIVE_FIELDS)
+
+
+def elsa_filename(request_id):
+    return "elsa_" + request_id + ".json"
+
+
+def elsa_prompt(workspace, request_id):
+    """The saved instructions plus the file name Elsa should use for its download."""
+    text = (workspace / "stage_a/requests" / request_id / "instructions.md").read_text(encoding="utf-8")
+    return text + ("\n\n## Output file name\n\nName the downloadable JSON file exactly `"
+                   + elsa_filename(request_id) + "`.\n")
+
+
+def default_download_dirs():
+    """Likely browser download folders on Linux and under WSL (Windows profiles)."""
+    home = Path.home() / "Downloads"
+    found = [home] if home.is_dir() else []
+    mounted = Path("/mnt/c/Users")
+    if mounted.is_dir():
+        found += sorted(p for p in mounted.glob("*/Downloads") if p.is_dir())
+    return found
+
+
+def download_dir(workspace):
+    saved = sa.read_json(workspace / "review.json").get("ui_download_dir")
+    if saved:
+        return saved
+    found = default_download_dirs()
+    return str(found[-1] if found else Path.home() / "Downloads")
+
+
+def remember_download_dir(workspace, folder):
+    config = sa.read_json(workspace / "review.json")
+    if config.get("ui_download_dir") != folder:
+        config["ui_download_dir"] = folder
+        sa.write_json(workspace / "review.json", config)
+
+
+def find_download(folder, request_id):
+    """Newest file Elsa saved for this request (browsers add ' (1)' to repeats)."""
+    directory = Path(folder).expanduser()
+    if not directory.is_dir():
+        raise ValueError(f"The folder {directory} does not exist.")
+    base = elsa_filename(request_id)[:-len(".json")]
+    matches = [p for p in directory.glob(base + "*.json") if p.is_file()]
+    if not matches:
+        raise ValueError(f"No file named {elsa_filename(request_id)} found in {directory}. "
+                         "Check Elsa's download finished, or upload/paste the response instead.")
+    return max(matches, key=lambda p: p.stat().st_mtime)
+
+
+def objective_references(workspace):
+    """Extracted objectives with their evidence, resolved to the exact stored PDF version."""
+    state = sa.load(workspace)
+    versions = source_versions(workspace)
+    references = []
+    for item in section_items(workspace, OBJECTIVES_SECTION, state):
+        candidate = item["candidate"]
+        if not candidate:
+            continue
+        record = candidate["record"]
+        manifest = state["requests"][candidate["request_id"]]
+        sources = []
+        for source in record["sources"]:
+            meta = manifest["sources"][source["document_id"]]
+            version_key = sa.object_hash(meta)
+            version = versions.get(version_key)
+            sources.append(dict(source, version_key=version_key, filename=meta["filename"],
+                                path=version["path"] if version else None))
+        references.append(dict(key=item["key"], label=item["label"], field=item["field"]["label"],
+                               status=record["status"], value=record["value"],
+                               explanation=record["explanation"], sources=sources))
+    return references
 
 
 def section_items(workspace, number, state=None):

@@ -1,6 +1,6 @@
 # Guided UI workflow
 
-The UI replaces routine terminal commands and folder navigation with four browser screens. It is a local single-reviewer application: it does not call Elsa, upload files to a cloud service, or require an API. Moving the instructions and response between this app and Elsa remains a manual step.
+The UI replaces routine terminal commands and folder navigation with three browser screens. It is a local single-reviewer application: it does not call Elsa, upload files to a cloud service, or require an API. Moving the instructions and response between this app and Elsa remains a manual step.
 
 ## One-time setup on the work computer
 
@@ -19,26 +19,18 @@ If port 8501 is already occupied, close the other Streamlit process before start
 
 ## First test without a protocol or Pandoc
 
-This confirms the review controls and local persistence without using proprietary files.
+1. Open the app and choose **Try fictional example**. It opens the **Review workspace** with simulated results.
+2. Expand **3. Primary Objective(s)** on the right and confirm the simulated objectives appear as references. The fictional example uses text sources, not a PDF, so there is no page to highlight.
+3. On **Export**, download **draft Markdown**. Word generation can wait until Pandoc is approved.
 
-1. Open the app and choose **Try fictional example**.
-2. In **Review sections**, change one `Memo wording` box.
-3. Click **Save section draft**. Move to **Export**, then return to **Review sections** and confirm the edit remains.
-4. Click **Approve section and continue** and confirm the app advances to the next section.
-5. Stop the app, run `./start_ui.sh` again, select the fictional review in the sidebar, and confirm the approved wording remains.
-6. On **Export**, download **draft Markdown**. Word generation can wait until Pandoc is approved.
+## PDF and highlight test without a real protocol
 
-The fictional example uses text sources, not a PDF. It is useful for workflow testing but does not test Elsa, PDF rendering, or retrieval accuracy.
-
-## PDF-viewer test without a real protocol
-
-After organizational approval, use a non-proprietary PDF whose pages can be freely inspected. A public guidance document or a locally created multi-page PDF is suitable.
+Use a non-proprietary PDF whose pages can be freely inspected, after organizational approval.
 
 1. Create a new review and upload that PDF as the main protocol on **Set up**.
-2. Prepare instructions on **Exchange with Elsa**. Confirm the instructions can be copied/downloaded and the same PDF is offered for download.
-3. Do not expect meaningful extraction unless Elsa is given both the instructions and the test PDF.
-4. If you do run the Elsa test, load its JSON, open a field's **Evidence**, and click **View source**.
-5. Confirm the embedded viewer opens the cited PDF position. Compare the exact excerpt and section manually.
+2. In **Review workspace**, open **3. Primary Objective(s)** and click **Prepare prompt**. Click **Copy prompt to clipboard** (or use the text box) and confirm the same PDF is offered for download.
+3. Run the exchange in Elsa with that PDF, then load the JSON response.
+4. Click a reference. The PDF should open at the page and outline the quoted passage. Compare it with the excerpt shown.
 
 The app distinguishes the 1-based PDF position from any printed page label. A source replacement is retained as a new version; old evidence remains tied to the old bytes.
 
@@ -48,27 +40,19 @@ The app distinguishes the 1-based PDF position from any printed page label. A so
 
 Create a named review, enter the reviewer's name, and upload the main protocol. Background PDFs are optional. Documents are copied into the review workspace, so you do not need to revisit their original folders.
 
-### 2. Exchange with Elsa
+### 2. Review workspace
 
-Use the suggested small batch. Click **Prepare instructions**, copy or download the displayed instructions, and attach every listed PDF in the same Elsa conversation. Ask Elsa to export its response as JSON; then return and use **Load response**.
+The left panel is the source PDF. The right panel lists the template sections; only **Primary Objective(s)** works so far.
 
-The app rejects malformed, incomplete, unmatched, or structurally invalid responses before changing review content. Re-loading identical bytes is harmless. Use a new extraction request when the protocol or accepted endpoint inventory changes.
+1. **Prompt for Elsa.** Click **Prepare prompt**, then **Copy prompt to clipboard**. If your browser blocks copying, open **Show prompt text** and copy from the box. Paste it into Elsa and attach the listed PDFs in the same chat. The prompt asks Elsa to name its download `elsa_<request id>.json`.
+2. **Bring the response back.** Three equal options: **Downloads folder** (set your browser's download folder once; the app finds the newest file with that name, and under WSL it suggests your Windows Downloads folder), **Upload file**, or **Paste JSON**.
+3. **References.** Each extracted objective lists its sources. Clicking one opens the PDF at the cited page and outlines the passage. The mark beside each reference reports the match: found on the cited page, only partly found, found on a different page than cited, or not found in the PDF's text (for example a scanned page). Elsa returns a page and an exact excerpt but no coordinates, so the highlight comes from searching the page's text layer. A match shows where the text is; it does not mean the extraction is correct.
 
-### 3. Review sections
+The app rejects malformed, incomplete, unmatched, or structurally invalid responses before changing review content. Re-loading identical bytes is harmless.
 
-For each answer:
+This screen is read-only for now. Editing, saving and approving answers will return as more sections are built, so final Word output stays locked until then; draft output still works.
 
-- compare the memo wording with the exact source excerpt;
-- click **View source** to open the cited PDF position;
-- correct wording or choose not to include it, with a reason where required;
-- use **Save section draft** if you are not ready to approve; and
-- use **Approve section and continue** only after checking every field in the section.
-
-Saved drafts survive navigation and restart but block final readiness until approved. New Elsa proposals do not silently replace earlier accepted wording; choose the new proposal explicitly if you want to adopt it.
-
-Sections 11–13 and the assessment portion of section 1 are manual reviewer work. Elsa is used for factual retrieval and factual summary, not statistical deficiency identification or conclusions.
-
-### 4. Export
+### 3. Export
 
 **Create draft Word** is available before the review is complete and marks unresolved content in the assembled memo. **Create final Word** requires all required decisions, a current factual executive summary, the manual sections, and the final reviewer checkbox.
 
