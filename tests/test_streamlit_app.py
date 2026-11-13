@@ -101,18 +101,62 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
         self.assertEqual(3, len(sa.load(workspace)["candidates"]))
-        self.assertFalse([b for b in app.button if b.key.startswith("ref:")])  # still on step 2
+        self.assertFalse([b for b in app.button if b.label == "Locate reference"])  # still on step 2
         self.button(app, "Next →").click().run()
         headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
         self.assertEqual(["#### Primary objectives", "#### Secondary objectives", "#### Other objectives (exploratory, etc.)"], headings)
         self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
-        reference = next(b for b in app.button if b.key.startswith("ref:OBJECTIVES.PRIMARY"))
-        reference.click().run()
+        locate = [b for b in app.button if b.label == "Locate reference"]
+        self.assertEqual(3, len(locate))
+        self.assertTrue(locate[2].disabled)  # the "not found" item cites nothing
+        self.assertEqual("Primary Objective(s):", app.text_area(key=f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:" + next(iter(sa.load(workspace)["candidates"]))).value)
+        locate[0].click().run()
         self.assert_clean(app)
         args = json.loads(app.get("component_instance")[-1].proto.json_args)
         self.assertEqual([1], args["pages_to_render"])
         self.assertTrue(args["annotations"])
         self.assertEqual(1, args["annotations"][0]["page"])
+
+    def test_locate_reference_cycles_through_several_passages(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
+        payload = self.objectives_payload(svc_request(workspace))
+        record = payload["fields"]["OBJECTIVES.PRIMARY"][0]
+        record["value"] = "Executive Summary:"
+        record["sources"] = [dict(record["sources"][0], pdf_page=1, exact_excerpt="Executive Summary:"),
+                             dict(record["sources"][0], pdf_page=2, exact_excerpt="Analyses for Other Important Endpoint(s):")]
+        ui.import_bytes(workspace, json.dumps(payload).encode())
+        self.button(app, "Next →").click().run()
+        self.button(app, "Next →").click().run()
+        pages = []
+        for _ in range(3):
+            next(b for b in app.button if b.label == "Locate reference").click().run()
+            self.assert_clean(app)
+            pages.append(json.loads(app.get("component_instance")[-1].proto.json_args)["pages_to_render"][0])
+        self.assertEqual([1, 2, 1], pages)
+
+    def test_edit_saves_a_draft_and_can_be_restored(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
+        request_id = svc_request(workspace)
+        ui.import_bytes(workspace, json.dumps(self.objectives_payload(request_id)).encode())
+        self.button(app, "Next →").click().run()
+        self.button(app, "Next →").click().run()
+        box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:"))
+        box.input("Edited primary objective").run()
+        self.assertTrue(any("Unsaved" in c.value for c in app.caption))
+        self.button(app, "Save edits").click().run()
+        self.assert_clean(app)
+        draft = sa.load(workspace)["ui_drafts"]["OBJECTIVES.PRIMARY/P1"]
+        self.assertEqual("Edited primary objective", draft["text"])
+        self.assertEqual({}, sa.load(workspace)["reviewed"])  # saving never approves
+        self.assertTrue(any("Edited draft saved" in c.value for c in app.caption))
+        candidate = sa.load(workspace)["candidates"][draft["candidate_id"]]
+        self.assertEqual("Primary Objective(s):", candidate["record"]["value"])  # Elsa's original untouched
+        self.button(app, "Restore Elsa's text").click().run()
+        self.assertNotIn("OBJECTIVES.PRIMARY/P1", sa.load(workspace).get("ui_drafts", {}))
+        box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:OBJECTIVES.PRIMARY/P1:"))
+        self.assertEqual("Primary Objective(s):", box.value)
 
     def test_missing_download_reports_the_expected_file_name(self):
         app, workspace = self.workspace_with_pdf()

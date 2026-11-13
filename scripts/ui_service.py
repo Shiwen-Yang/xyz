@@ -249,9 +249,13 @@ def objective_references(workspace):
             version = versions.get(version_key)
             sources.append(dict(source, version_key=version_key, filename=meta["filename"],
                                 path=version["path"] if version else None))
+        draft = state.get("ui_drafts", {}).get(item["key"])
+        original = record["value"] or ""
+        text = draft["text"] if draft else original  # unfound items start empty, not with a stock disposition
         references.append(dict(key=item["key"], label=item["label"], field=item["field"]["label"],
-                               status=record["status"], value=record["value"],
-                               explanation=record["explanation"], sources=sources))
+                               status=record["status"], value=record["value"], explanation=record["explanation"],
+                               sources=sources, candidate_id=item["candidate_id"], original=original, text=text,
+                               has_draft=bool(draft), edited=text != original, include=item["include"], reason=item["reason"]))
     order = {identifier: n for n, (identifier, _) in enumerate(OBJECTIVE_GROUPS)}
     return sorted(references, key=lambda r: order.get(r["key"].split("/", 1)[0], 99))
 
@@ -325,6 +329,23 @@ def save_draft(workspace, item_key, text, include, reason, candidate_id, manual=
         state.setdefault("ui_drafts", {})[item_key] = dict(candidate_id=candidate_id, manual=manual,
                                                          text=text.strip(), include=bool(include), reason=reason.strip())
         sa.save(workspace, state)
+
+
+def save_objective_draft(workspace, item_key, text):
+    """Save edited wording as an unapproved draft; Elsa's original stays untouched."""
+    with _LOCK:
+        for ref in objective_references(workspace):
+            if ref["key"] == item_key:
+                save_draft(workspace, item_key, text, ref["include"], ref["reason"], ref["candidate_id"])
+                return
+    raise ValueError("Unknown objective")
+
+
+def reset_draft(workspace, item_key):
+    with _LOCK:
+        state = sa.load(workspace)
+        if state.get("ui_drafts", {}).pop(item_key, None) is not None:
+            sa.save(workspace, state)
 
 
 def choose_candidate(workspace, item_key, candidate_id):

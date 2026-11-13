@@ -269,9 +269,37 @@ def step_response(workspace):
         st.success("A response is loaded. Click Next to see the references.")
 
 
+def text_key(workspace, ref):
+    return f"objtext:{workspace.name}:{ref['key']}:{ref['candidate_id']}"
+
+
+def save_objective(workspace, ref):
+    try:
+        svc.save_objective_draft(workspace, ref["key"], st.session_state[text_key(workspace, ref)])
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
+
+
+def restore_original(workspace, ref):
+    try:
+        svc.reset_draft(workspace, ref["key"])
+        st.session_state.pop(text_key(workspace, ref), None)
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
+
+
+def locate_next(ref):
+    """Aim the PDF at this objective's next cited passage, cycling when there are several."""
+    counter = "locate:" + ref["key"]
+    index = st.session_state.get(counter, 0) % len(ref["sources"])
+    st.session_state[counter] = index + 1
+    source = ref["sources"][index]
+    focus_reference(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"])
+
+
 def step_references(workspace):
     references = svc.objective_references(workspace)
-    st.caption("Click a reference to open the PDF at that passage. A match only shows where the text was found; you still read and verify it.")
+    st.caption("Edit the wording if needed and save it as a draft. Saving does not approve anything. Use Locate reference to see the cited passage in the PDF; a match only shows where the text was found, so you still read and verify it.")
     marks = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
     for identifier, heading in svc.OBJECTIVE_GROUPS:
         st.markdown("#### " + heading)
@@ -280,20 +308,34 @@ def step_references(workspace):
             st.caption("None returned.")
         for ref in group:
             with st.container(border=True):
+                box = text_key(workspace, ref)
+                st.session_state.setdefault(box, ref["text"])
                 st.markdown("**" + ref["label"] + "**")
-                if ref["value"]:
-                    st.write(ref["value"])
+                if ref["status"] != "found":
+                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + " The box is empty; type the objective in if you find it yourself.")
+                st.text_area("Objective wording", key=box, height=120, label_visibility="collapsed")
+                if st.session_state[box] != ref["text"]:
+                    st.caption("🟠 Unsaved changes")
+                elif ref["has_draft"] and ref["edited"]:
+                    st.caption("✏️ Edited draft saved (not approved)")
                 else:
-                    st.caption(ref["status"].replace("_", " ").capitalize() + (" — " + ref["explanation"] if ref["explanation"] else ""))
-                for index, source in enumerate(ref["sources"]):
-                    usable = source["path"] and Path(source["path"]).is_file()
-                    found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if usable else dict(status="unavailable")
-                    where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
-                    st.button(f"{marks[found['status']]} {where} · {source['section'] or 'section not given'}", key=f"ref:{ref['key']}:{index}",
-                              help=pdf_locate.LABELS[found["status"]], on_click=focus_reference,
-                              args=(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"]))
-                    st.caption(pdf_locate.LABELS[found["status"]])
-                    st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+                    st.caption("As extracted by Elsa" if ref["status"] == "found" else "Nothing saved")
+                save, locate, restore = st.columns([1, 1, 1])
+                save.button("Save edits", key="save:" + box, on_click=save_objective, args=(workspace, ref), use_container_width=True)
+                locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
+                              help=None if ref["sources"] else "Elsa cited no passage for this item.")
+                if ref["has_draft"]:
+                    restore.button("Restore Elsa's text", key="restore:" + box, on_click=restore_original, args=(workspace, ref), use_container_width=True)
+                if ref["sources"]:
+                    with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
+                        for number, source in enumerate(ref["sources"], 1):
+                            usable = source["path"] and Path(source["path"]).is_file()
+                            found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if usable else dict(status="unavailable")
+                            where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
+                            st.caption(f"{marks[found['status']]} {number}. {where} · {source['section'] or 'section not given'} — {pdf_locate.LABELS[found['status']]}")
+                            st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+                    if len(ref["sources"]) > 1:
+                        st.caption("Locate reference steps through these passages one click at a time.")
 
 
 def objectives_section(workspace):
