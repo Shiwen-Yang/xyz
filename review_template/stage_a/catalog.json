@@ -83,7 +83,7 @@
         {
           "id": "OBJECTIVES.PRIMARY",
           "label": "Primary objectives",
-          "instructions": "Extract each primary objective verbatim. Exclude all secondary and exploratory objectives from this field.",
+          "instructions": "Extract each primary objective verbatim. Classify by the sponsor's own labels: exclude all secondary, key secondary, exploratory and other objectives from this field.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",
@@ -94,11 +94,22 @@
         {
           "id": "OBJECTIVES.OTHER",
           "label": "Secondary objectives",
-          "instructions": "Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance.",
+          "instructions": "Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance, and exclude primary and exploratory objectives.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",
           "scope": "secondary_objective",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "OBJECTIVES.EXPLORATORY",
+          "label": "Other objectives (exploratory, safety, etc.)",
+          "instructions": "Extract every other stated objective that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic objectives) verbatim, retaining the sponsor's label. If the protocol states none, return one not_found record with instance_id none.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "other_objective",
           "discovers_entities": true,
           "source_scope": "protocol"
         }

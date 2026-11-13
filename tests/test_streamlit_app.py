@@ -57,7 +57,9 @@ class StreamlitTests(unittest.TestCase):
         return dict(schema_version=1, catalog_version=1, request_id=request_id, search_scope="Test PDF only.",
                     entities=[dict(id="P1", kind="primary_objective", label="Primary objective 1"),
                               dict(id="S1", kind="secondary_objective", label="Secondary objective 1")],
-                    fields={"OBJECTIVES.PRIMARY": [record("P1", excerpt)], "OBJECTIVES.OTHER": [record("S1", excerpt)]})
+                    fields={"OBJECTIVES.PRIMARY": [record("P1", excerpt)], "OBJECTIVES.OTHER": [record("S1", excerpt)],
+                            "OBJECTIVES.EXPLORATORY": [dict(instance_id="none", status="not_found", value=None, sources=[],
+                                                            explanation="No exploratory objectives in the test PDF.")]})
 
     def workspace_with_pdf(self):
         app = self.start()
@@ -78,6 +80,10 @@ class StreamlitTests(unittest.TestCase):
         self.assert_clean(app)
         request_id = svc_request(workspace)
         self.assertTrue(any(request_id in code.value for code in app.code))
+        self.assertTrue(self.button(app, "← Back").disabled)
+        self.button(app, "Next →").click().run()
+        self.assertFalse(app.code)  # the prompt step is hidden after moving on
+        self.assertTrue(self.button(app, "Next →").disabled)  # nothing loaded yet
         app.text_area(key=f"paste:{workspace.name}").input("{}").run()
         self.button(app, "Load pasted JSON").click().run()
         self.assertTrue(app.error)
@@ -90,10 +96,15 @@ class StreamlitTests(unittest.TestCase):
         downloads = Path(self.temp.name) / "downloads"
         downloads.mkdir()
         (downloads / ui.elsa_filename(request_id)).write_text(json.dumps(self.objectives_payload(request_id)))
+        self.button(app, "Next →").click().run()
         app.text_input(key=f"folder:{workspace.name}").input(str(downloads)).run()
         self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
-        self.assertEqual(2, len(sa.load(workspace)["candidates"]))
+        self.assertEqual(3, len(sa.load(workspace)["candidates"]))
+        self.assertFalse([b for b in app.button if b.key.startswith("ref:")])  # still on step 2
+        self.button(app, "Next →").click().run()
+        headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
+        self.assertEqual(["#### Primary objectives", "#### Secondary objectives", "#### Other objectives (exploratory, etc.)"], headings)
         self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
         reference = next(b for b in app.button if b.key.startswith("ref:OBJECTIVES.PRIMARY"))
         reference.click().run()
@@ -106,6 +117,7 @@ class StreamlitTests(unittest.TestCase):
     def test_missing_download_reports_the_expected_file_name(self):
         app, workspace = self.workspace_with_pdf()
         self.button(app, "Prepare prompt").click().run()
+        self.button(app, "Next →").click().run()
         app.text_input(key=f"folder:{workspace.name}").input(self.temp.name).run()
         self.button(app, "Load response from this folder").click().run()
         self.assertIn(ui.elsa_filename(svc_request(workspace)), app.error[0].value)

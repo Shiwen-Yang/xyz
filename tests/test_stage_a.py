@@ -25,6 +25,7 @@ PANDOC = os.environ.get("PANDOC") or shutil.which("pandoc")
 ENTITIES = {
     "primary_objective": [dict(id="O1", kind="primary_objective", label="Primary objective")],
     "secondary_objective": [dict(id="O2", kind="secondary_objective", label="Secondary objective")],
+    "other_objective": [dict(id="O3", kind="other_objective", label="Exploratory objective")],
     "primary_endpoint": [dict(id="SCORE", kind="primary_endpoint", label="SCORE"),
                          dict(id="RESPONSE", kind="primary_endpoint", label="RESPONSE")],
     "secondary_endpoint": [dict(id="WEEK24", kind="secondary_endpoint", label="Week 24 score")],
@@ -141,7 +142,7 @@ class StageATests(unittest.TestCase):
         self.assertNotIn("path", manifest["sources"]["PROTOCOL"])
         path = self.workspace / "stage_a/requests" / manifest["request_id"]
         self.assertTrue((path / "response.schema.json").exists())
-        self.assertIn("Exclude all secondary", (path / "instructions.md").read_text())
+        self.assertIn("exclude all secondary", (path / "instructions.md").read_text())
         with self.assertRaisesRegex(ValueError, "manual"):
             self.prepare(fields="SPONSOR.COMMENTS")
 
@@ -276,7 +277,7 @@ class StageATests(unittest.TestCase):
         quiet(demo_stage_a.create, destination)
         state = sa.load(destination)
         self.assertEqual({}, state["reviewed"])
-        self.assertEqual(16, len(state["candidates"]))
+        self.assertEqual(17, len(state["candidates"]))
         text = " ".join((destination / "inputs/protocol.md").read_text().split())
         for candidate in state["candidates"].values():
             for source in candidate["record"]["sources"]:

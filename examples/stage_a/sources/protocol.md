@@ -6,7 +6,7 @@ It has no PDF page positions or printed page labels; cite section numbers and ma
 
 ## 1. Synopsis and objectives
 
-This is a phase 2, randomized, double-blind, three-arm study of Fictional Product A in adults aged 18–65 with the imaginary condition Q. The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12. Both endpoints must succeed for a dose to be declared successful. Q response is an important binary measure; the two endpoint definitions below are co-primary. The secondary objective compares change in Q score at week 24. Planned accrual is 300 subjects, 100 per arm; approximately 270 are expected to contribute week-12 measurements.
+This is a phase 2, randomized, double-blind, three-arm study of Fictional Product A in adults aged 18–65 with the imaginary condition Q. The two primary objectives compare each active dose with placebo on change in Q score and Q response at week 12. Both endpoints must succeed for a dose to be declared successful. Q response is an important binary measure; the two endpoint definitions below are co-primary. The secondary objective compares change in Q score at week 24. An exploratory objective is to describe change in Q score at week 4. Planned accrual is 300 subjects, 100 per arm; approximately 270 are expected to contribute week-12 measurements.
 
 ## 2. Design
 

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "review_template/stage_a"
 ID = r"^[A-Za-z][A-Za-z0-9_-]{0,63}$"
 STATUSES = ["found", "not_found", "not_applicable", "conflicting", "unreadable"]
-KINDS = ["primary_objective", "secondary_objective", "primary_endpoint", "secondary_endpoint",
+KINDS = ["primary_objective", "secondary_objective", "other_objective", "primary_endpoint", "secondary_endpoint",
          "experimental_arm", "control_arm", "interim_look"]
 DISPOSITIONS = {"not_found": "Not located in supplied sources.",
                 "not_applicable": "Not applicable.", "conflicting": "Conflicting source statements; reviewer disposition required.",

@@ -23,8 +23,9 @@ Verbatim text is preserved in provenance. You may accept edited report wording w
 
 | Field | Mode | Instance scope | Retrieval instruction |
 | --- | --- | --- | --- |
-| OBJECTIVES.PRIMARY | verbatim | primary_objective | Extract each primary objective verbatim. Exclude all secondary and exploratory objectives from this field. |
-| OBJECTIVES.OTHER | verbatim | secondary_objective | Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance. |
+| OBJECTIVES.PRIMARY | verbatim | primary_objective | Extract each primary objective verbatim. Classify by the sponsor's own labels: exclude all secondary, key secondary, exploratory and other objectives from this field. |
+| OBJECTIVES.OTHER | verbatim | secondary_objective | Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance, and exclude primary and exploratory objectives. |
+| OBJECTIVES.EXPLORATORY | verbatim | other_objective | Extract every other stated objective that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic objectives) verbatim, retaining the sponsor's label. If the protocol states none, return one not_found record with instance_id none. |
 
 ## Design Features:
 

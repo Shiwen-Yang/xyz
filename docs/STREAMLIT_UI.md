@@ -44,9 +44,11 @@ Create a named review, enter the reviewer's name, and upload the main protocol. 
 
 The left panel is the source PDF. The right panel lists the template sections; only **Primary Objective(s)** works so far.
 
+Each section works as a short panel: one step is shown at a time, **Next →** unlocks when the step is done, and earlier steps are hidden once you move on (use **← Back** to return).
+
 1. **Prompt for Elsa.** Click **Prepare prompt**, then **Copy prompt to clipboard**. If your browser blocks copying, open **Show prompt text** and copy from the box. Paste it into Elsa and attach the listed PDFs in the same chat. The prompt asks Elsa to name its download `elsa_<request id>.json`.
 2. **Bring the response back.** Three equal options: **Downloads folder** (set your browser's download folder once; the app finds the newest file with that name, and under WSL it suggests your Windows Downloads folder), **Upload file**, or **Paste JSON**.
-3. **References.** Each extracted objective lists its sources. Clicking one opens the PDF at the cited page and outlines the passage. The mark beside each reference reports the match: found on the cited page, only partly found, found on a different page than cited, or not found in the PDF's text (for example a scanned page). Elsa returns a page and an exact excerpt but no coordinates, so the highlight comes from searching the page's text layer. A match shows where the text is; it does not mean the extraction is correct.
+3. **References.** Objectives are grouped as primary, secondary, and other (for example exploratory), following the sponsor's own labels. Each lists its sources. Clicking one opens the PDF at the cited page and outlines the passage. The mark beside each reference reports the match: found on the cited page, only partly found, found on a different page than cited, or not found in the PDF's text (for example a scanned page). Reviews created before the "other objectives" field existed are refreshed automatically if nothing has been approved. Elsa returns a page and an exact excerpt but no coordinates, so the highlight comes from searching the page's text layer. A match shows where the text is; it does not mean the extraction is correct.
 
 The app rejects malformed, incomplete, unmatched, or structurally invalid responses before changing review content. Re-loading identical bytes is harmless.
 

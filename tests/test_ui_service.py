@@ -53,7 +53,7 @@ class UIServiceTests(unittest.TestCase):
         run, created = ui.import_bytes(self.workspace, raw)
         self.assertFalse(created)
         self.assertIn(run, sa.load(self.workspace)["imports"])
-        self.assertEqual(16, len(sa.load(self.workspace)["candidates"]))
+        self.assertEqual(17, len(sa.load(self.workspace)["candidates"]))
         before = (self.workspace / "stage_a/state.json").read_bytes()
         with self.assertRaises(ValueError):
             ui.import_bytes(self.workspace, b'{"request_id": "unknown"}')
@@ -73,7 +73,7 @@ class UIServiceTests(unittest.TestCase):
         self.assertTrue(all(p.read_bytes() == data for p, data in originals.items()))
         ui.save_draft(self.workspace, last["key"], "Secondary objective verified", True, "", last["candidate_id"])
         ui.approve_section(self.workspace, 3, "Reviewer")
-        self.assertEqual(3, len(sa.load(self.workspace)["reviewed"]))
+        self.assertEqual(4, len(sa.load(self.workspace)["reviewed"]))
         self.assertEqual("Approved", ui.section_statuses(self.workspace)[3])
         self.assertEqual(("Review sections", 4, 0), ui.next_step(self.workspace))
 
@@ -125,6 +125,16 @@ class UIServiceTests(unittest.TestCase):
         self.assertIn("None", path.read_text())
         with self.assertRaisesRegex(ValueError, "cannot bypass"):
             ui.build_report(self.workspace, final=True, word=False)
+
+    def test_older_review_gains_other_objectives_field_when_nothing_is_approved(self):
+        workspace = ui.create_review("Older review", "Reviewer")
+        ui.store_source(workspace, "protocol.pdf", (ROOT / "tests/fixtures/sample.pdf").read_bytes(), "protocol")
+        catalog = sa.read_json(workspace / "stage_a/catalog.json")
+        for section in catalog["sections"]:
+            section["fields"] = [f for f in section["fields"] if f["id"] != "OBJECTIVES.EXPLORATORY"]
+        sa.write_json(workspace / "stage_a/catalog.json", catalog)
+        request_id = ui.prepare_objectives(workspace)
+        self.assertIn("OBJECTIVES.EXPLORATORY", sa.load(workspace)["requests"][request_id]["fields"])
 
 
 if __name__ == "__main__":

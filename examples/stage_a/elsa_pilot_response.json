@@ -48,6 +48,11 @@
       "id": "WEEK24",
       "kind": "secondary_endpoint",
       "label": "Week-24 change in Q score"
+    },
+    {
+      "id": "O_WEEK4",
+      "kind": "other_objective",
+      "label": "Exploratory objective: week-4 Q score"
     }
   ],
   "fields": {
@@ -312,6 +317,23 @@
             "printed_page": null,
             "section": "3. Endpoints and hypotheses",
             "exact_excerpt": "The secondary endpoint is baseline-to-week-24 change in Q score."
+          }
+        ],
+        "explanation": ""
+      }
+    ],
+    "OBJECTIVES.EXPLORATORY": [
+      {
+        "instance_id": "O_WEEK4",
+        "status": "found",
+        "value": "An exploratory objective is to describe change in Q score at week 4.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "1. Synopsis and objectives",
+            "exact_excerpt": "An exploratory objective is to describe change in Q score at week 4."
           }
         ],
         "explanation": ""

@@ -192,12 +192,34 @@ def load_response(workspace, data):
         error(exc, workspace)
 
 
-def objectives_section(workspace):
+def set_step(key, index):
+    st.session_state[key] = index
+
+
+def stepper(workspace, name, steps):
+    """Show one step of a section at a time; earlier steps are hidden once you move on.
+
+    ``steps`` is a list of ``(title, render, can_continue)``; Next stays disabled
+    until ``can_continue()`` is true after the step has rendered.
+    """
+    key = f"step:{workspace.name}:{name}"
+    last = len(steps) - 1
+    index = max(0, min(int(st.session_state.get(key, 0)), last))
+    title, render, can_continue = steps[index]
+    st.progress((index + 1) / len(steps), text=f"Step {index + 1} of {len(steps)} · {title}")
+    render()
+    st.divider()
+    back, forward = st.columns(2)
+    back.button("← Back", key=key + ":back", disabled=index == 0, on_click=set_step, args=(key, index - 1), use_container_width=True)
+    forward.button("Next →" if index < last else "Last step", key=key + ":next", type="primary",
+                   disabled=index == last or not can_continue(), on_click=set_step, args=(key, index + 1), use_container_width=True)
+
+
+def step_prompt(workspace):
     state = sa.load(workspace)
     request_id = svc.objectives_request(workspace)
-    st.markdown("**1 · Prompt for Elsa**")
+    st.caption("Asks Elsa for every primary, secondary and other (for example exploratory) objective, quoted word for word with its source page. Each objective is sorted by the sponsor's own label.")
     if not request_id:
-        st.caption("Asks Elsa for every primary and secondary objective, quoted word for word, with its source page.")
         if st.button("Prepare prompt", type="primary", key="prepare:" + workspace.name):
             try:
                 svc.prepare_objectives(workspace)
@@ -218,9 +240,13 @@ def objectives_section(workspace):
         columns[0].write("• " + meta["filename"])
         if source and Path(source["path"]).is_file():
             columns[1].download_button("Download", Path(source["path"]).read_bytes(), file_name=meta["filename"], key="docdl:" + source_id + request_id)
+    st.caption("When Elsa has answered, ask it to download the JSON, then click Next.")
+
+
+def step_response(workspace):
+    request_id = svc.objectives_request(workspace)
     filename = svc.elsa_filename(request_id)
-    st.markdown("**2 · Bring Elsa's response back**")
-    st.caption("Ask Elsa to download its JSON; the prompt names the file `" + filename + "`.")
+    st.caption("The prompt asks Elsa to name its download `" + filename + "`.")
     folder_tab, upload_tab, paste_tab = st.tabs(["Downloads folder", "Upload file", "Paste JSON"])
     with folder_tab:
         folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key="folder:" + workspace.name)
@@ -239,28 +265,43 @@ def objectives_section(workspace):
         pasted = st.text_area("Paste Elsa's JSON", height=140, key="paste:" + workspace.name)
         if st.button("Load pasted JSON", disabled=not pasted.strip(), key="loadpaste:" + workspace.name):
             load_response(workspace, pasted.encode("utf-8"))
-    st.markdown("**3 · References**")
+    if svc.objective_references(workspace):
+        st.success("A response is loaded. Click Next to see the references.")
+
+
+def step_references(workspace):
     references = svc.objective_references(workspace)
-    if not references:
-        st.caption("Nothing loaded yet.")
-        return
     st.caption("Click a reference to open the PDF at that passage. A match only shows where the text was found; you still read and verify it.")
     marks = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
-    for ref in references:
-        with st.container(border=True):
-            st.markdown("**" + ref["label"] + "**")
-            if ref["value"]:
-                st.write(ref["value"])
-            else:
-                st.caption(ref["status"].replace("_", " ").capitalize() + (" — " + ref["explanation"] if ref["explanation"] else ""))
-            for index, source in enumerate(ref["sources"]):
-                found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if source["path"] and Path(source["path"]).is_file() else dict(status="unavailable")
-                where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
-                st.button(f"{marks[found['status']]} {where} · {source['section'] or 'section not given'}", key=f"ref:{ref['key']}:{index}",
-                          help=pdf_locate.LABELS[found["status"]], on_click=focus_reference,
-                          args=(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"]))
-                st.caption(pdf_locate.LABELS[found["status"]])
-                st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+    for identifier, heading in svc.OBJECTIVE_GROUPS:
+        st.markdown("#### " + heading)
+        group = [r for r in references if r["key"].startswith(identifier + "/")]
+        if not group:
+            st.caption("None returned.")
+        for ref in group:
+            with st.container(border=True):
+                st.markdown("**" + ref["label"] + "**")
+                if ref["value"]:
+                    st.write(ref["value"])
+                else:
+                    st.caption(ref["status"].replace("_", " ").capitalize() + (" — " + ref["explanation"] if ref["explanation"] else ""))
+                for index, source in enumerate(ref["sources"]):
+                    usable = source["path"] and Path(source["path"]).is_file()
+                    found = locate_excerpt(source["path"], svc_sha(source["path"]), source["pdf_page"], source["exact_excerpt"]) if usable else dict(status="unavailable")
+                    where = "p. " + str(source["pdf_page"]) if source["pdf_page"] else "page not given"
+                    st.button(f"{marks[found['status']]} {where} · {source['section'] or 'section not given'}", key=f"ref:{ref['key']}:{index}",
+                              help=pdf_locate.LABELS[found["status"]], on_click=focus_reference,
+                              args=(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"]))
+                    st.caption(pdf_locate.LABELS[found["status"]])
+                    st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
+
+
+def objectives_section(workspace):
+    stepper(workspace, "objectives", [
+        ("Prompt for Elsa", lambda: step_prompt(workspace), lambda: svc.objectives_request(workspace) is not None),
+        ("Bring Elsa's response back", lambda: step_response(workspace), lambda: bool(svc.objective_references(workspace))),
+        ("References", lambda: step_references(workspace), lambda: False),
+    ])
 
 
 def review_workspace(workspace):

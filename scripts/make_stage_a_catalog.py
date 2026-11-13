@@ -11,8 +11,9 @@ GUIDANCE = {
     "BACKGROUND.SUBMISSION": "Describe the submission and current protocol identifier, version, and date as supplied.",
     "BACKGROUND.PRODUCT": "Summarize relevant sponsor-provided product background from the registered documents.",
     "BACKGROUND.HISTORY": "Summarize documented previous reviews, agreements, meetings, and regulatory events from supplied sources. Do not infer history from silence in the protocol.",
-    "OBJECTIVES.PRIMARY": "Extract each primary objective verbatim. Exclude all secondary and exploratory objectives from this field.",
-    "OBJECTIVES.OTHER": "Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance.",
+    "OBJECTIVES.PRIMARY": "Extract each primary objective verbatim. Classify by the sponsor's own labels: exclude all secondary, key secondary, exploratory and other objectives from this field.",
+    "OBJECTIVES.OTHER": "Extract every secondary/key secondary objective verbatim, retaining sponsor priority labels. Do not select items by perceived statistical importance, and exclude primary and exploratory objectives.",
+    "OBJECTIVES.EXPLORATORY": "Extract every other stated objective that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic objectives) verbatim, retaining the sponsor's label. If the protocol states none, return one not_found record with instance_id none.",
     "DESIGN.POPULATION": "Summarize the target population and important eligibility boundaries, including age and disease status as stated.",
     "DESIGN.RANDOMIZATION": "Summarize the sponsor's treatment-assignment procedure, including randomized, concurrent-control, minimization, or single-arm design.",
     "DESIGN.ALLOCATION_RATIO": "Quote the allocation ratio and its named arms exactly. Do not infer a ratio from sample sizes.",
@@ -63,10 +64,10 @@ for prefix in ("PRIMARY_ANALYSIS", "OTHER_ANALYSIS"):
 def generate():
     sections = json.loads((ROOT / "review_template/sections.json").read_text())
     sections = copy.deepcopy(sections)
-    verbatim = {"OBJECTIVES.PRIMARY", "OBJECTIVES.OTHER", "ENDPOINTS.PRIMARY", "ENDPOINTS.SECONDARY",
+    verbatim = {"OBJECTIVES.PRIMARY", "OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY", "ENDPOINTS.PRIMARY", "ENDPOINTS.SECONDARY",
                 "DESIGN.ALLOCATION_RATIO", "HYPOTHESIS.STATEMENT", "HYPOTHESIS.MARGIN", "HYPOTHESIS.SUCCESS"}
     manual = {"EXECUTIVE.ASSESSMENT", "SAMPLE_SIZE.VERIFICATION", "OTHER.ISSUES", "TEAM.COMMENTS", "SPONSOR.COMMENTS"}
-    scopes = {"OBJECTIVES.PRIMARY": "primary_objective", "OBJECTIVES.OTHER": "secondary_objective",
+    scopes = {"OBJECTIVES.PRIMARY": "primary_objective", "OBJECTIVES.OTHER": "secondary_objective", "OBJECTIVES.EXPLORATORY": "other_objective",
               "ENDPOINTS.PRIMARY": "primary_endpoint", "ENDPOINTS.SECONDARY": "secondary_endpoint",
               "DESIGN.ARM.EXPERIMENTAL": "experimental_arm", "DESIGN.ARM.CONTROL": "control_arm",
               "INTERIM.METHOD": "interim_look", "INTERIM.TIMING": "interim_look", "INTERIM.OPERATING": "interim_look"}

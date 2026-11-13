@@ -67,6 +67,13 @@
         "instructions": "Include relevant secondary/key secondary objectives; omit this paragraph if not applicable and record the disposition in the evidence log.",
         "depth": 0,
         "group": false
+      },
+      {
+        "id": "OBJECTIVES.EXPLORATORY",
+        "label": "Other objectives (exploratory, safety, etc.)",
+        "instructions": "Other sponsor-stated objectives that are neither primary nor secondary, such as exploratory objectives. Record them for completeness; include in the memo only if relevant.",
+        "depth": 0,
+        "group": false
       }
     ],
     "prose": true

@@ -19,7 +19,9 @@ BATCHES = [("Objectives, design and endpoints", "3,4,5"),
            ("Hypotheses and analyses", "6,7,8"),
            ("Background, interim plans and sample size", "2,9,10"),
            ("Factual executive summary", "1")]
-OBJECTIVE_FIELDS = "OBJECTIVES.PRIMARY,OBJECTIVES.OTHER"
+OBJECTIVE_FIELDS = "OBJECTIVES.PRIMARY,OBJECTIVES.OTHER,OBJECTIVES.EXPLORATORY"
+OBJECTIVE_GROUPS = [("OBJECTIVES.PRIMARY", "Primary objectives"), ("OBJECTIVES.OTHER", "Secondary objectives"),
+                    ("OBJECTIVES.EXPLORATORY", "Other objectives (exploratory, etc.)")]
 OBJECTIVES_SECTION = 3
 _LOCK = threading.RLock()
 
@@ -170,6 +172,13 @@ def objectives_request(workspace):
 
 
 def prepare_objectives(workspace):
+    with _LOCK:
+        state = sa.load(workspace)
+        if "OBJECTIVES.EXPLORATORY" not in sa.fields(workspace):
+            # Reviews made before "other objectives" existed: refresh the field list only if nothing is approved yet.
+            if state["reviewed"]:
+                raise ValueError("This review was created before other (exploratory) objectives were added and already has approved answers. Start a new review to extract them.")
+            shutil.copyfile(sa.ASSETS / "catalog.json", workspace / "stage_a/catalog.json")
     return create_request(workspace, 0, OBJECTIVE_FIELDS)
 
 
@@ -243,7 +252,8 @@ def objective_references(workspace):
         references.append(dict(key=item["key"], label=item["label"], field=item["field"]["label"],
                                status=record["status"], value=record["value"],
                                explanation=record["explanation"], sources=sources))
-    return references
+    order = {identifier: n for n, (identifier, _) in enumerate(OBJECTIVE_GROUPS)}
+    return sorted(references, key=lambda r: order.get(r["key"].split("/", 1)[0], 99))
 
 
 def section_items(workspace, number, state=None):
