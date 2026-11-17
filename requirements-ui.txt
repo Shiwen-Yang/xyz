@@ -2,3 +2,9 @@
 streamlit==1.59.0
 streamlit-pdf-viewer==0.0.30
 pymupdf==1.28.2
+# Starlette >=1.8.0 crashes serving static files: its FileResponse refactor
+# races http.response.start against http.response.body under disconnect/
+# cancellation, raising "Expected ASGI message 'http.response.start', but
+# got 'http.response.body'" in uvicorn. streamlit only requires
+# starlette>=0.40.0, so pip can pull a broken version; pin below it.
+starlette<1.8.0
