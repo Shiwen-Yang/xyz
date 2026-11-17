@@ -137,13 +137,14 @@ class StreamlitTests(unittest.TestCase):
         self.assertFalse([b for b in app.button if b.label == "Locate reference"])  # still on step 2
         self.button(app, "Next →").click().run()
         headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
-        self.assertEqual(["#### Primary objectives", "#### Secondary objectives", "#### Other objectives (exploratory, etc.)",
-                          "#### Primary endpoints", "#### Secondary endpoints"], headings)
+        self.assertEqual(["#### Primary objectives", "#### Secondary objectives", "#### Other objectives (exploratory, etc.)"],
+                         headings)  # each tier's endpoints are nested under it now, not listed as separate top headings
         names = [e.label for e in app.expander if "Objective" in e.label and not e.label[0].isdigit() and e.label != ui.UNIT_TITLE]
         self.assertEqual(["Primary Objective 1", "Secondary Objective 1", "Other Objectives (none found by Elsa)"], names)
         locate = [b for b in app.button if b.label == "Locate reference"]
         self.assertEqual(5, len(locate))
-        self.assertTrue(locate[2].disabled)  # the "not found" item cites nothing
+        # order is now: Primary Objective 1, its endpoint, Secondary Objective 1, its endpoint, then the exploratory placeholder
+        self.assertTrue(locate[4].disabled)  # the "not found" item cites nothing
         locate[0].click().run()
         self.assert_clean(app)
         args = json.loads(app.get("component_instance")[-1].proto.json_args)
@@ -330,6 +331,43 @@ class StreamlitTests(unittest.TestCase):
         self.assert_clean(app)
         header = next(e for e in app.expander if e.label.endswith(ui.UNIT_TITLE))
         self.assertEqual("✅ " + ui.UNIT_TITLE, header.label)
+
+    def test_review_step_interleaves_each_objective_with_its_own_endpoints(self):
+        app, workspace = self.workspace_with_pdf()
+        self.button(app, "Prepare prompt").click().run()
+        request_id = svc_request(workspace)
+
+        def objective(instance):
+            return dict(instance_id=instance, status="found", value="Objective text", explanation="",
+                        sources=[dict(document_id="PROTOCOL", pdf_page=1, printed_page=None, section="Objectives", exact_excerpt="Objective text")])
+
+        def endpoint(instance, objective_ref):
+            return dict(instance_id=instance, status="found", value="Endpoint text", explanation="", objective_ref=objective_ref,
+                        sources=[dict(document_id="PROTOCOL", pdf_page=1, printed_page=None, section="Endpoints", exact_excerpt="Endpoint text")])
+
+        payload = dict(schema_version=1, catalog_version=1, request_id=request_id, search_scope="Test PDF only.",
+                       entities=[dict(id="P1", kind="primary_objective", label="Primary objective 1"),
+                                 dict(id="P2", kind="primary_objective", label="Primary objective 2"),
+                                 dict(id="S1", kind="secondary_objective", label="Secondary objective 1"),
+                                 dict(id="PE1", kind="primary_endpoint", label="Primary endpoint 1"),
+                                 dict(id="PE2", kind="primary_endpoint", label="Primary endpoint 2")],
+                       fields={
+                           "OBJECTIVES.PRIMARY": [objective("P1"), objective("P2")],
+                           "OBJECTIVES.OTHER": [objective("S1")],
+                           "OBJECTIVES.EXPLORATORY": [dict(instance_id="none", status="not_found", value=None, sources=[],
+                                                           explanation="No exploratory objectives in the test PDF.")],
+                           "ENDPOINTS.PRIMARY": [endpoint("PE1", "P1"), endpoint("PE2", "P2")],
+                           "ENDPOINTS.SECONDARY": [dict(instance_id="none", status="not_found", value=None, sources=[],
+                                                        explanation="No secondary endpoints in the test PDF.")],
+                       })
+        ui.import_bytes(workspace, json.dumps(payload).encode())
+        self.button(app, "Next →").click().run()
+        self.button(app, "Next →").click().run()
+        self.assert_clean(app)
+        names = [e.label for e in app.expander if e.label != ui.UNIT_TITLE and not e.label[0].isdigit() and "cited passage" not in e.label]
+        self.assertEqual(["Primary Objective 1", "Primary Endpoint 1", "Primary Objective 2", "Primary Endpoint 2",
+                          "Secondary Endpoints (none found by Elsa)", "Secondary Objective 1",
+                          "Other Objectives (none found by Elsa)"], names)
 
     @unittest.skipUnless(os.environ.get("PANDOC") or shutil.which("pandoc"), "Set PANDOC for Word download control test")
     def test_word_generation_exposes_download_control(self):

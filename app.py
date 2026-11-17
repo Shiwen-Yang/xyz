@@ -436,29 +436,44 @@ def item_bulletin(workspace, ref, noun, endpoint_group=None):
 
 def step_references(workspace):
     st.caption("Check each item against the PDF (Locate reference), correct the wording if needed, then click Looks good. "
-               "A match only shows where the text was found; you still read and verify it.")
+               "A match only shows where the text was found; you still read and verify it. Each objective is followed "
+               "immediately by the endpoints linked to it.")
     objectives = svc.objective_references(workspace)
-    for identifier, heading in svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["groups"]:
+    endpoints = svc.endpoint_references(workspace)
+    objective_noun = svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["noun"]
+    endpoint_noun = svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["noun"]
+    for objective_group, heading, endpoint_group in (("OBJECTIVES.PRIMARY", "Primary objectives", "ENDPOINTS.PRIMARY"),
+                                                       ("OBJECTIVES.OTHER", "Secondary objectives", "ENDPOINTS.SECONDARY")):
         st.markdown("#### " + heading)
-        group = [r for r in objectives if r["group"] == identifier]
+        group = [r for r in objectives if r["group"] == objective_group]
         if not group:
             st.caption("None returned.")
-        for ref in group:
-            item_bulletin(workspace, ref, svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["noun"])
-    endpoints = svc.endpoint_references(workspace)
-    noun = svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["noun"]
-    for identifier, heading in svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["groups"]:
-        st.markdown("#### " + heading)
-        none_found = [r for r in endpoints if r["group"] == identifier and r["instance"] == "none"]
+        none_found = [r for r in endpoints if r["group"] == endpoint_group and r["instance"] == "none"]
         for ref in none_found:
-            item_bulletin(workspace, ref, noun)
-        if not none_found:
-            for sub_instance, sub_heading, refs in svc.endpoint_subgroups(workspace, identifier):
-                st.markdown("##### " + sub_heading)
-                if not refs:
-                    st.caption("None returned.")
-                for ref in refs:
-                    item_bulletin(workspace, ref, noun, endpoint_group=identifier)
+            item_bulletin(workspace, ref, endpoint_noun)
+        subgroups = iter(svc.endpoint_subgroups(workspace, endpoint_group)) if not none_found else iter(())
+        for ref in group:
+            item_bulletin(workspace, ref, objective_noun)
+            if none_found or ref["instance"] == "none":
+                continue
+            sub_instance, sub_heading, refs = next(subgroups)
+            st.markdown("##### " + sub_heading)
+            if not refs:
+                st.caption("None returned.")
+            for endpoint_ref in refs:
+                item_bulletin(workspace, endpoint_ref, endpoint_noun, endpoint_group=endpoint_group)
+        for sub_instance, sub_heading, refs in subgroups:  # endpoints linked to nothing in this tier
+            st.markdown("##### " + sub_heading)
+            if not refs:
+                st.caption("None returned.")
+            for endpoint_ref in refs:
+                item_bulletin(workspace, endpoint_ref, endpoint_noun, endpoint_group=endpoint_group)
+    st.markdown("#### Other objectives (exploratory, etc.)")
+    group = [r for r in objectives if r["group"] == "OBJECTIVES.EXPLORATORY"]
+    if not group:
+        st.caption("None returned.")
+    for ref in group:
+        item_bulletin(workspace, ref, objective_noun)
 
 
 def finish_unit(workspace):
