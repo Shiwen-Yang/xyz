@@ -191,7 +191,8 @@ def schema_for(manifest):
                              "status": dict(string, enum=STATUSES),
                              "value": {"type": ["string", "null"]},
                              "sources": {"type": "array", "items": source},
-                             "explanation": string}}
+                             "explanation": string,
+                             "objective_ref": {"type": ["string", "null"], "pattern": ID}}}
     return {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object",
             "$defs": {"record": record},
             "additionalProperties": False,

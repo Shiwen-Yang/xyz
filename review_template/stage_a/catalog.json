@@ -248,7 +248,7 @@
         {
           "id": "ENDPOINTS.PRIMARY",
           "label": "Primary",
-          "instructions": "Extract each primary endpoint's complete definition verbatim, including time windows, event/response definitions, and derivation rules wherever specified. Exclude secondary endpoints.",
+          "instructions": "Extract each primary endpoint's complete definition verbatim, including time windows, event/response definitions, and derivation rules wherever specified. Exclude secondary endpoints. Also set objective_ref to the id of the primary objective entity (declared in OBJECTIVES.PRIMARY in this same response) that this endpoint serves, or null if it does not correspond to one specific primary objective.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",
@@ -259,7 +259,7 @@
         {
           "id": "ENDPOINTS.SECONDARY",
           "label": "Secondary",
-          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important.",
+          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. Also set objective_ref to the id of the secondary objective entity (declared in OBJECTIVES.OTHER in this same response) that this endpoint serves, or null if it does not correspond to one specific secondary objective.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",

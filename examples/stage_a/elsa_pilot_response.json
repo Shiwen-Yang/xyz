@@ -287,7 +287,8 @@
             "exact_excerpt": "Primary endpoint SCORE is baseline-to-week-12 change in Q score, calculated as week-12 score minus baseline score; higher scores are better."
           }
         ],
-        "explanation": ""
+        "explanation": "",
+        "objective_ref": "O_SCORE"
       },
       {
         "instance_id": "RESPONSE",
@@ -302,7 +303,8 @@
             "exact_excerpt": "Primary endpoint RESPONSE is an increase of at least 5 Q-score points from baseline at week 12."
           }
         ],
-        "explanation": ""
+        "explanation": "",
+        "objective_ref": "O_RESPONSE"
       }
     ],
     "ENDPOINTS.SECONDARY": [
@@ -319,7 +321,8 @@
             "exact_excerpt": "The secondary endpoint is baseline-to-week-24 change in Q score."
           }
         ],
-        "explanation": ""
+        "explanation": "",
+        "objective_ref": "O_WEEK24"
       }
     ],
     "OBJECTIVES.EXPLORATORY": [

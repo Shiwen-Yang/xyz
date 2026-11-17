@@ -235,6 +235,44 @@ class UIServiceTests(unittest.TestCase):
         self.assertFalse(restored["removed"])
         self.assertFalse(restored["approved"])
 
+    def test_endpoints_default_linked_to_their_reported_objective(self):
+        choices = ui.objective_choices(self.workspace, "ENDPOINTS.PRIMARY")
+        self.assertEqual([("O_SCORE", "Primary Objective 1"), ("O_RESPONSE", "Primary Objective 2")], choices)
+        score = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == "ENDPOINTS.PRIMARY/SCORE")
+        self.assertEqual("O_SCORE", ui.endpoint_link(self.workspace, score))
+        week24 = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == "ENDPOINTS.SECONDARY/WEEK24")
+        self.assertEqual("O_WEEK24", ui.endpoint_link(self.workspace, week24))
+        groups = {name: [r["key"] for r in group] for _, name, group in ui.endpoint_subgroups(self.workspace, "ENDPOINTS.PRIMARY")}
+        self.assertEqual(["ENDPOINTS.PRIMARY/SCORE"], groups["Primary Objective 1"])
+        self.assertEqual(["ENDPOINTS.PRIMARY/RESPONSE"], groups["Primary Objective 2"])
+        self.assertEqual([], groups["Not linked to a specific objective"])
+
+    def test_reviewer_can_override_an_endpoint_link_and_fall_back_when_unresolved(self):
+        ui.set_endpoint_link(self.workspace, "ENDPOINTS.PRIMARY/SCORE", ui.NOT_LINKED)
+        moved = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == "ENDPOINTS.PRIMARY/SCORE")
+        self.assertEqual(ui.NOT_LINKED, ui.endpoint_link(self.workspace, moved))
+        groups = {name: [r["key"] for r in group] for _, name, group in ui.endpoint_subgroups(self.workspace, "ENDPOINTS.PRIMARY")}
+        self.assertEqual([], groups["Primary Objective 1"])
+        self.assertEqual(["ENDPOINTS.PRIMARY/SCORE"], groups["Not linked to a specific objective"])
+        ui.set_endpoint_link(self.workspace, "ENDPOINTS.PRIMARY/SCORE", "nonexistent")
+        stale = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == "ENDPOINTS.PRIMARY/SCORE")
+        self.assertEqual(ui.NOT_LINKED, ui.endpoint_link(self.workspace, stale))  # an unresolvable override still falls back
+
+    def test_unit_ready_and_complete_unit_require_every_objective_and_endpoint_approved(self):
+        self.assertFalse(ui.unit_ready(self.workspace))
+        for ref in ui.objective_references(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        self.assertFalse(ui.unit_ready(self.workspace))  # endpoints still unapproved
+        with self.assertRaises(ValueError):
+            ui.complete_unit(self.workspace)
+        self.assertFalse(ui.unit_done(self.workspace))
+        for ref in ui.endpoint_references(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        self.assertTrue(ui.unit_ready(self.workspace))
+        ui.complete_unit(self.workspace)
+        self.assertTrue(ui.unit_done(self.workspace))
+        self.assertTrue(ui.all_sections_done(self.workspace))
+
     def test_memo_items_and_all_sections_done_span_every_list_section(self):
         self.assertFalse(ui.all_sections_done(self.workspace))
         for ref in ui.objective_references(self.workspace):

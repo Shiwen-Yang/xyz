@@ -19,6 +19,8 @@ Singleton fields use instance_id `study`. Repeatable fields use distinct entity 
 
 Do not put multiple endpoints or arms into one record. Keep each endpoint's hypotheses, analysis methods, analysis populations, missing-data handling and alpha attached to its own instance. Cover all expected_instances in the manifest. In the first interim-look request, discover the looks in INTERIM.METHOD and provide timing and operating-characteristic records for each look requested in that same batch.
 
+When a request includes both objectives and endpoints together, a primary or secondary endpoint record may also carry objective_ref: the entity ID of the primary or secondary objective (declared elsewhere in this same response) that endpoint serves. Use JSON null when the endpoint does not correspond to one specific objective. Omit objective_ref entirely from every other kind of record.
+
 New entities may be introduced only through a requested entity-discovery field with a found definition/inventory record. New entities must be used; do not add unrelated inventory entries. For absent/undiscoverable inventories, return exactly one non-found record with instance_id `none`, rather than an empty array or a fabricated entity. Do not use `none` to replace existing expected entities. Never mix a none record with real instances in the same field.
 
 ## Status rules

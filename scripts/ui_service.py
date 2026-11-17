@@ -32,8 +32,6 @@ LIST_SECTIONS = {
         names={"OBJECTIVES.PRIMARY": "Primary Objective", "OBJECTIVES.OTHER": "Secondary Objective",
                "OBJECTIVES.EXPLORATORY": "Other Objective"},
         noun="objective",
-        prompt_caption="Asks Elsa for every primary, secondary and other (for example exploratory) objective, "
-                       "quoted word for word with its source page. Each objective is sorted by the sponsor's own label.",
     ),
     ENDPOINTS_SECTION: dict(
         batch=0,
@@ -41,10 +39,19 @@ LIST_SECTIONS = {
         groups=[("ENDPOINTS.PRIMARY", "Primary endpoints"), ("ENDPOINTS.SECONDARY", "Secondary endpoints")],
         names={"ENDPOINTS.PRIMARY": "Primary Endpoint", "ENDPOINTS.SECONDARY": "Secondary Endpoint"},
         noun="endpoint",
-        prompt_caption="Asks Elsa for every primary and secondary endpoint definition, quoted word for word with "
-                       "its source page. Each endpoint is sorted by the sponsor's own label.",
     ),
 }
+# Objectives and Endpoints are reviewed together: one Elsa exchange, one combined check, one Finish —
+# so that an endpoint's reported correspondence to an objective can always be resolved immediately,
+# regardless of which section the reviewer looks at first.
+UNIT_TITLE = "Objectives and Endpoints"
+UNIT_FIELDS = LIST_SECTIONS[OBJECTIVES_SECTION]["fields"] + "," + LIST_SECTIONS[ENDPOINTS_SECTION]["fields"]
+UNIT_PROMPT_CAPTION = ("Asks Elsa for every primary, secondary and other (for example exploratory) objective, and every "
+                      "primary and secondary endpoint, each quoted word for word with its source page and sorted by the "
+                      "sponsor's own label. Each endpoint also says which objective it corresponds to, if any.")
+# Endpoint group identifier -> the objective group its items can be linked to.
+ENDPOINT_OBJECTIVE_GROUP = {"ENDPOINTS.PRIMARY": "OBJECTIVES.PRIMARY", "ENDPOINTS.SECONDARY": "OBJECTIVES.OTHER"}
+NOT_LINKED = ""  # sentinel: "not linked to a specific objective"
 _LOCK = threading.RLock()
 
 
@@ -183,40 +190,36 @@ def create_request(workspace, batch, custom_fields=None):
         return request_id
 
 
-def list_request(workspace, number):
-    """Return the latest still-valid request for this list section's fields, else None."""
+def unit_request(workspace):
+    """Return the latest still-valid request covering every Objectives and Endpoints field, else None."""
     state = sa.load(workspace)
     sources = {k: sa.public_source(v) for k, v in state["sources"].items()}
-    fields = LIST_SECTIONS[number]["fields"]
     for request_id, manifest in reversed(list(state["requests"].items())):
-        if manifest.get("ui_custom_fields") == fields and manifest["sources"] == sources:
+        if manifest.get("ui_custom_fields") == UNIT_FIELDS and manifest["sources"] == sources:
             return request_id
     return None
 
 
-def objectives_request(workspace):
-    return list_request(workspace, OBJECTIVES_SECTION)
+def _ensure_other_objectives_field(workspace):
+    state = sa.load(workspace)
+    if "OBJECTIVES.EXPLORATORY" not in sa.fields(workspace):
+        # Reviews made before "other objectives" existed: refresh the field list only if nothing is approved yet.
+        if state["reviewed"]:
+            raise ValueError("This review was created before other (exploratory) objectives were added and already has approved answers. Start a new review to extract them.")
+        shutil.copyfile(sa.ASSETS / "catalog.json", workspace / "stage_a/catalog.json")
 
 
 def prepare_objectives(workspace):
     with _LOCK:
-        state = sa.load(workspace)
-        if "OBJECTIVES.EXPLORATORY" not in sa.fields(workspace):
-            # Reviews made before "other objectives" existed: refresh the field list only if nothing is approved yet.
-            if state["reviewed"]:
-                raise ValueError("This review was created before other (exploratory) objectives were added and already has approved answers. Start a new review to extract them.")
-            shutil.copyfile(sa.ASSETS / "catalog.json", workspace / "stage_a/catalog.json")
+        _ensure_other_objectives_field(workspace)
     config = LIST_SECTIONS[OBJECTIVES_SECTION]
     return create_request(workspace, config["batch"], config["fields"])
 
 
-def prepare_endpoints(workspace):
-    config = LIST_SECTIONS[ENDPOINTS_SECTION]
-    return create_request(workspace, config["batch"], config["fields"])
-
-
-def prepare_section(workspace, number):
-    return {OBJECTIVES_SECTION: prepare_objectives, ENDPOINTS_SECTION: prepare_endpoints}[number](workspace)
+def prepare_unit(workspace):
+    with _LOCK:
+        _ensure_other_objectives_field(workspace)
+    return create_request(workspace, LIST_SECTIONS[OBJECTIVES_SECTION]["batch"], UNIT_FIELDS)
 
 
 def elsa_filename(request_id):
@@ -303,7 +306,7 @@ def list_references(workspace, number):
                                explanation=record["explanation"], sources=sources, candidate_id=item["candidate_id"],
                                original=original, text=text, approved=current, included=included, removed=removed,
                                reason=accepted["reason"] if (current and removed) else "",
-                               flag=flag, checked=checked))
+                               flag=flag, checked=checked, objective_ref=record.get("objective_ref")))
     order = {identifier: n for n, (identifier, _) in enumerate(config["groups"])}
     references.sort(key=lambda r: order.get(r["group"], 99))
     counts = {}
@@ -340,6 +343,63 @@ def find_reference(workspace, item_key):
     if number not in LIST_SECTIONS:
         return None
     return next((r for r in list_references(workspace, number) if r["key"] == item_key), None)
+
+
+def objective_choices(workspace, endpoint_group):
+    """(instance_id, display name) for the objectives one of this endpoint group's items can link to."""
+    objective_group = ENDPOINT_OBJECTIVE_GROUP[endpoint_group]
+    refs = [r for r in objective_references(workspace) if r["group"] == objective_group and r["instance"] != "none"]
+    return [(r["instance"], r["name"]) for r in refs]
+
+
+def endpoint_link(workspace, ref):
+    """The objective instance this endpoint is linked to: a reviewer override, else Elsa's own reported
+    correspondence if it still resolves to a real objective, else NOT_LINKED."""
+    state = sa.load(workspace)
+    valid = {instance for instance, _ in objective_choices(workspace, ref["group"])}
+    override = state.get("ui_objective_links", {}).get(ref["key"])
+    link = override if override is not None else ref["objective_ref"]
+    return link if link in valid else NOT_LINKED
+
+
+def set_endpoint_link(workspace, item_key, objective_instance):
+    with _LOCK:
+        state = sa.load(workspace)
+        state.setdefault("ui_objective_links", {})[item_key] = objective_instance
+        sa.save(workspace, state)
+
+
+def endpoint_subgroups(workspace, endpoint_group):
+    """(objective_instance_or_NOT_LINKED, heading, [refs]) for one endpoint group, bucketed by linked objective,
+    in the same order as that objective's own bulletins; "none found by Elsa" placeholders are excluded."""
+    choices = objective_choices(workspace, endpoint_group)
+    refs = [r for r in endpoint_references(workspace) if r["group"] == endpoint_group and r["instance"] != "none"]
+    buckets = {instance: [] for instance, _ in choices}
+    buckets[NOT_LINKED] = []
+    for ref in refs:
+        buckets[endpoint_link(workspace, ref)].append(ref)
+    groups = [(instance, name, buckets[instance]) for instance, name in choices]
+    groups.append((NOT_LINKED, "Not linked to a specific objective", buckets[NOT_LINKED]))
+    return groups
+
+
+def unit_items(workspace):
+    """Every Objectives and Endpoints item together, for the combined workflow's loaded/ready checks."""
+    return objective_references(workspace) + endpoint_references(workspace)
+
+
+def unit_ready(workspace):
+    items = unit_items(workspace)
+    return bool(items) and all(r["approved"] and not r["flag"] for r in items)
+
+
+def unit_done(workspace):
+    return section_done(workspace, OBJECTIVES_SECTION) and section_done(workspace, ENDPOINTS_SECTION)
+
+
+def complete_unit(workspace):
+    complete_section(workspace, OBJECTIVES_SECTION)
+    complete_section(workspace, ENDPOINTS_SECTION)
 
 
 def reviewer_name(workspace):

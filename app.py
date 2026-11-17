@@ -252,14 +252,14 @@ def stepper(workspace, name, steps, finish=None):
         forward.button(label, key=key + ":finish", type="primary", disabled=not can_finish(), on_click=on_finish, use_container_width=True)
 
 
-def step_prompt(workspace, number):
+def step_prompt(workspace):
     state = sa.load(workspace)
-    request_id = svc.list_request(workspace, number)
-    st.caption(svc.LIST_SECTIONS[number]["prompt_caption"])
+    request_id = svc.unit_request(workspace)
+    st.caption(svc.UNIT_PROMPT_CAPTION)
     if not request_id:
-        if st.button("Prepare prompt", type="primary", key=f"prepare:{number}:{workspace.name}"):
+        if st.button("Prepare prompt", type="primary", key=f"prepare:{workspace.name}"):
             try:
-                svc.prepare_section(workspace, number)
+                svc.prepare_unit(workspace)
                 st.rerun()
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
@@ -280,14 +280,14 @@ def step_prompt(workspace, number):
     st.caption("When Elsa has answered, ask it to download the JSON, then click Next.")
 
 
-def step_response(workspace, number):
-    request_id = svc.list_request(workspace, number)
+def step_response(workspace):
+    request_id = svc.unit_request(workspace)
     filename = svc.elsa_filename(request_id)
     st.caption("The prompt asks Elsa to name its download `" + filename + "`.")
     folder_tab, upload_tab, paste_tab = st.tabs(["Downloads folder", "Upload file", "Paste JSON"])
     with folder_tab:
-        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key=f"folder:{number}:{workspace.name}")
-        if st.button("Load response from this folder", type="primary", key=f"loadfolder:{number}:{workspace.name}"):
+        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key=f"folder:{workspace.name}")
+        if st.button("Load response from this folder", type="primary", key=f"loadfolder:{workspace.name}"):
             try:
                 found = svc.find_download(folder, request_id)
                 svc.remember_download_dir(workspace, folder)
@@ -295,14 +295,14 @@ def step_response(workspace, number):
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
     with upload_tab:
-        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key=f"upload:{number}:{workspace.name}")
-        if st.button("Load uploaded file", disabled=uploaded is None, key=f"loadupload:{number}:{workspace.name}"):
+        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key=f"upload:{workspace.name}")
+        if st.button("Load uploaded file", disabled=uploaded is None, key=f"loadupload:{workspace.name}"):
             load_response(workspace, uploaded.getvalue())
     with paste_tab:
-        pasted = st.text_area("Paste Elsa's JSON", height=140, key=f"paste:{number}:{workspace.name}")
-        if st.button("Load pasted JSON", disabled=not pasted.strip(), key=f"loadpaste:{number}:{workspace.name}"):
+        pasted = st.text_area("Paste Elsa's JSON", height=140, key=f"paste:{workspace.name}")
+        if st.button("Load pasted JSON", disabled=not pasted.strip(), key=f"loadpaste:{workspace.name}"):
             load_response(workspace, pasted.encode("utf-8"))
-    if svc.list_references(workspace, number):
+    if svc.unit_items(workspace):
         st.success("A response is loaded. Click Next to see the references.")
 
 
@@ -321,10 +321,25 @@ def remove_reason_key(workspace, ref):
     return "removereason:" + workspace.name + ":" + ref["key"]
 
 
+def removing_key(workspace, ref):
+    return "removing:" + workspace.name + ":" + ref["key"]
+
+
+def toggle_removing(workspace, ref):
+    key = removing_key(workspace, ref)
+    st.session_state[key] = not st.session_state.get(key, False)
+
+
+def cancel_removing(workspace, ref):
+    st.session_state[removing_key(workspace, ref)] = False
+    st.session_state.pop(remove_reason_key(workspace, ref), None)
+
+
 def remove_objective(workspace, ref):
     try:
         svc.remove_item(workspace, ref["key"], st.session_state.get(remove_reason_key(workspace, ref), ""))
         st.session_state.pop(remove_reason_key(workspace, ref), None)
+        st.session_state[removing_key(workspace, ref)] = False
     except (ValueError, OSError) as exc:
         st.session_state["edit_error"] = str(exc)
 
@@ -358,65 +373,108 @@ def cited_passages(ref):
         st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
 
 
-def step_references(workspace, number):
-    references = svc.list_references(workspace, number)
-    noun = svc.LIST_SECTIONS[number]["noun"]
-    st.caption(f"Check each {noun} against the PDF (Locate reference), correct the wording if needed, then click Looks good. A match only shows where the text was found; you still read and verify it.")
-    for identifier, heading in svc.LIST_SECTIONS[number]["groups"]:
+def objective_link_key(workspace, ref):
+    return "objlink:" + workspace.name + ":" + ref["key"]
+
+
+def set_objective_link(workspace, ref):
+    key = objective_link_key(workspace, ref)
+    svc.set_endpoint_link(workspace, ref["key"], st.session_state[key])
+
+
+def item_bulletin(workspace, ref, noun, endpoint_group=None):
+    """One Elsa-extracted item: editable wording, locate/approve/flag/remove, and, for an endpoint,
+    which objective it corresponds to."""
+    box = text_key(workspace, ref)
+    st.session_state.setdefault(box, ref["text"])
+    unsaved = st.session_state[box] != ref["text"]
+    done = ref["approved"] and not ref["flag"] and not unsaved
+    icon = "🚩 " if ref["flag"] else "🗑️ " if ref["removed"] else "✅ " if done else ""
+    with st.expander(icon + ref["name"], expanded=not done):
+        if ref["flag"]:
+            st.error("Flagged while checking the memo" + (": " + ref["flag"]["note"] if ref["flag"]["note"] else ".") + " Fix the wording, then click Looks good again.")
+        if ref["removed"]:
+            st.info("Removed" + (": " + ref["reason"] if ref["reason"] else "") + ". It is left out of the memo. Click ↻ to bring it back.")
+        if ref["status"] != "found":
+            st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + f" The box is empty; type the {noun} in if you find it yourself, or click Looks good to confirm there is none.")
+        st.text_area(noun.capitalize() + " wording", key=box, height=120, label_visibility="collapsed")
+        if unsaved:
+            st.caption("🟠 Changes not confirmed yet. Click Looks good to keep them.")
+        if endpoint_group:
+            choices = svc.objective_choices(workspace, endpoint_group)
+            options = [instance for instance, _ in choices] + [svc.NOT_LINKED]
+            names = dict(choices, **{svc.NOT_LINKED: "Not linked to a specific objective"})
+            link_key = objective_link_key(workspace, ref)
+            st.session_state.setdefault(link_key, svc.endpoint_link(workspace, ref))
+            st.selectbox("Corresponds to", options, format_func=lambda i: names[i], key=link_key,
+                         on_change=set_objective_link, args=(workspace, ref))
+        can_remove = ref["status"] == "found" and not ref["removed"]
+        if can_remove:
+            good, locate, reset, remove = st.columns([1.3, 1.5, 0.5, 1.3])
+        else:
+            good, locate, reset = st.columns([1.4, 1.6, 0.6])
+        good.button("Looks good", key="good:" + box, type="primary", on_click=looks_good, args=(workspace, ref), use_container_width=True)
+        locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
+                      help=None if ref["sources"] else "Elsa cited no passage for this item.")
+        reset.button("↻", key="reset:" + box, on_click=reset_objective, args=(workspace, ref), use_container_width=True,
+                     help="Reset to Elsa's original text and clear any approval or flag")
+        if can_remove:
+            remove.button(f"Remove this {noun}", key="remove:" + box, on_click=toggle_removing, args=(workspace, ref), use_container_width=True)
+            if st.session_state.get(removing_key(workspace, ref)):
+                st.text_input("Reason for removing (required to remove)", key=remove_reason_key(workspace, ref),
+                              placeholder=f"Why should this be removed? e.g. duplicate of another {noun}, not actually an {noun}",
+                              label_visibility="collapsed")
+                confirm, cancel = st.columns(2)
+                confirm.button("Confirm removal", key="removeconfirm:" + box, type="primary", on_click=remove_objective, args=(workspace, ref), use_container_width=True)
+                cancel.button("Cancel", key="removecancel:" + box, on_click=cancel_removing, args=(workspace, ref), use_container_width=True)
+        if ref["sources"]:
+            with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
+                cited_passages(ref)
+                if len(ref["sources"]) > 1:
+                    st.caption("Locate reference steps through these passages one click at a time.")
+
+
+def step_references(workspace):
+    st.caption("Check each item against the PDF (Locate reference), correct the wording if needed, then click Looks good. "
+               "A match only shows where the text was found; you still read and verify it.")
+    objectives = svc.objective_references(workspace)
+    for identifier, heading in svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["groups"]:
         st.markdown("#### " + heading)
-        group = [r for r in references if r["group"] == identifier]
+        group = [r for r in objectives if r["group"] == identifier]
         if not group:
             st.caption("None returned.")
         for ref in group:
-            box = text_key(workspace, ref)
-            st.session_state.setdefault(box, ref["text"])
-            unsaved = st.session_state[box] != ref["text"]
-            done = ref["approved"] and not ref["flag"] and not unsaved
-            icon = "🚩 " if ref["flag"] else "🗑️ " if ref["removed"] else "✅ " if done else ""
-            with st.expander(icon + ref["name"], expanded=not done):
-                if ref["flag"]:
-                    st.error("Flagged while checking the memo" + (": " + ref["flag"]["note"] if ref["flag"]["note"] else ".") + " Fix the wording, then click Looks good again.")
-                if ref["removed"]:
-                    st.info("Removed" + (": " + ref["reason"] if ref["reason"] else "") + ". It is left out of the memo. Click ↻ to bring it back.")
-                if ref["status"] != "found":
-                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + f" The box is empty; type the {noun} in if you find it yourself, or click Looks good to confirm there is none.")
-                st.text_area(noun.capitalize() + " wording", key=box, height=120, label_visibility="collapsed")
-                if unsaved:
-                    st.caption("🟠 Changes not confirmed yet. Click Looks good to keep them.")
-                good, locate, reset = st.columns([1.4, 1.6, 0.6])
-                good.button("Looks good", key="good:" + box, type="primary", on_click=looks_good, args=(workspace, ref), use_container_width=True)
-                locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
-                              help=None if ref["sources"] else "Elsa cited no passage for this item.")
-                reset.button("↻", key="reset:" + box, on_click=reset_objective, args=(workspace, ref), use_container_width=True,
-                             help="Reset to Elsa's original text and clear any approval or flag")
-                if ref["status"] == "found" and not ref["removed"]:
-                    st.text_input("Reason for removing (required to remove)", key=remove_reason_key(workspace, ref),
-                                  placeholder=f"Why should this be removed? e.g. duplicate of another {noun}, not actually an {noun}",
-                                  label_visibility="collapsed")
-                    st.button(f"Remove this {noun}", key="remove:" + box, on_click=remove_objective, args=(workspace, ref), use_container_width=True)
-                if ref["sources"]:
-                    with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
-                        cited_passages(ref)
-                        if len(ref["sources"]) > 1:
-                            st.caption("Locate reference steps through these passages one click at a time.")
+            item_bulletin(workspace, ref, svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["noun"])
+    endpoints = svc.endpoint_references(workspace)
+    noun = svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["noun"]
+    for identifier, heading in svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["groups"]:
+        st.markdown("#### " + heading)
+        none_found = [r for r in endpoints if r["group"] == identifier and r["instance"] == "none"]
+        for ref in none_found:
+            item_bulletin(workspace, ref, noun)
+        if not none_found:
+            for sub_instance, sub_heading, refs in svc.endpoint_subgroups(workspace, identifier):
+                st.markdown("##### " + sub_heading)
+                if not refs:
+                    st.caption("None returned.")
+                for ref in refs:
+                    item_bulletin(workspace, ref, noun, endpoint_group=identifier)
 
 
-def finish_section(workspace, number):
+def finish_unit(workspace):
     try:
-        svc.complete_section(workspace, number)
+        svc.complete_unit(workspace)
     except (ValueError, OSError) as exc:
         st.session_state["edit_error"] = str(exc)
 
 
-def list_section(workspace, number):
-    """A section built as per-item Elsa bulletins (objectives, endpoints, ...)."""
-    noun = svc.LIST_SECTIONS[number]["noun"]
-    stepper(workspace, f"list{number}", [
-        ("Prompt for Elsa", lambda: step_prompt(workspace, number), lambda: svc.list_request(workspace, number) is not None),
-        ("Bring Elsa's response back", lambda: step_response(workspace, number), lambda: bool(svc.list_references(workspace, number))),
-        (f"Check each {noun}", lambda: step_references(workspace, number), lambda: False),
-    ], finish=("Finish this section ✓", lambda: bool(svc.list_references(workspace, number)) and all(r["approved"] and not r["flag"] for r in svc.list_references(workspace, number)),
-               lambda: finish_section(workspace, number)))
+def combined_section(workspace):
+    """Objectives and Endpoints, reviewed together: one Elsa exchange, one combined check, one Finish."""
+    stepper(workspace, "objectives_endpoints", [
+        ("Prompt for Elsa", lambda: step_prompt(workspace), lambda: svc.unit_request(workspace) is not None),
+        ("Bring Elsa's response back", lambda: step_response(workspace), lambda: bool(svc.unit_items(workspace))),
+        ("Check each item", lambda: step_references(workspace), lambda: False),
+    ], finish=("Finish this section ✓", lambda: svc.unit_ready(workspace), lambda: finish_unit(workspace)))
 
 
 def review_workspace(workspace):
@@ -430,13 +488,15 @@ def review_workspace(workspace):
         with st.container(height=820):
             for section in catalog["sections"]:
                 number, title = section["number"], section["title"].rstrip(": ")
-                active = number in svc.LIST_SECTIONS
-                done = active and svc.section_done(workspace, number)
-                with st.expander(("✅ " if done else "") + f"{number}. {title}", expanded=active and not done):
-                    if active:
-                        list_section(workspace, number)
-                    else:
-                        st.caption("Not available in this workspace yet.")
+                if number == svc.ENDPOINTS_SECTION:
+                    continue  # reviewed together with Objectives, below
+                if number == svc.OBJECTIVES_SECTION:
+                    done = svc.unit_done(workspace)
+                    with st.expander(("✅ " if done else "") + svc.UNIT_TITLE, expanded=not done):
+                        combined_section(workspace)
+                    continue
+                with st.expander(f"{number}. {title}"):
+                    st.caption("Not available in this workspace yet.")
         all_done = svc.all_sections_done(workspace)
         st.button("Continue to Export →", type="primary", on_click=navigate, args=("Export",),
                   disabled=not all_done, use_container_width=True,
