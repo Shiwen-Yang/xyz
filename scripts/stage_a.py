@@ -378,7 +378,9 @@ def validate_response(payload, manifest):
                     quotation = " ".join(record["value"].split())
                     excerpts = " ".join(" ".join(s["exact_excerpt"].split()) for s in record["sources"])
                     if quotation not in excerpts:
-                        raise ValueError(f"{identifier}: verbatim value does not match its returned excerpts (whitespace ignored)")
+                        raise ValueError(f"{identifier}: verbatim value is not a whitespace-collapsed substring of its sources' "
+                                         "exact_excerpt concatenated in order; check for hyphenation/wording differences between "
+                                         "value and the excerpts, and remove any inserted connector words, brackets, or paraphrasing from value")
             else:
                 if record["value"] is not None or not record["explanation"].strip():
                     raise ValueError(f"{identifier}: unresolved/inapplicable results require null value and explanation")
