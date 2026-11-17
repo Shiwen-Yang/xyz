@@ -453,11 +453,13 @@ def step_references(workspace):
             item_bulletin(workspace, ref, endpoint_noun)
         subgroups = iter(svc.endpoint_subgroups(workspace, endpoint_group)) if not none_found else iter(())
         for ref in group:
+            if not none_found and ref["instance"] != "none":
+                st.markdown("##### " + ref["name"])
             item_bulletin(workspace, ref, objective_noun)
             if none_found or ref["instance"] == "none":
                 continue
             sub_instance, sub_heading, refs = next(subgroups)
-            st.markdown("##### " + sub_heading)
+            st.markdown("##### Endpoints — " + sub_heading + ":")
             if not refs:
                 st.caption("None returned.")
             for endpoint_ref in refs:

@@ -312,8 +312,9 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Next →").click().run()
         self.assert_clean(app)
         subheadings = [m.value for m in app.markdown if m.value.startswith("##### ")]
-        self.assertEqual(["##### Primary Objective 1", "##### Not linked to a specific objective",
-                          "##### Secondary Objective 1", "##### Not linked to a specific objective"], subheadings)
+        self.assertEqual(["##### Primary Objective 1", "##### Endpoints — Primary Objective 1:", "##### Not linked to a specific objective",
+                          "##### Secondary Objective 1", "##### Endpoints — Secondary Objective 1:", "##### Not linked to a specific objective"],
+                         subheadings)
         names = [e.label for e in app.expander if "Endpoint" in e.label and not e.label[0].isdigit() and e.label != ui.UNIT_TITLE]
         self.assertEqual(["Primary Endpoint 1", "Secondary Endpoint 1"], names)
         link = next(w for w in app.selectbox if w.key == f"objlink:{workspace.name}:ENDPOINTS.PRIMARY/PE1")
