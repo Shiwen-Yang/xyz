@@ -262,10 +262,13 @@ def objective_references(workspace):
             text = original  # unfound items start empty, not with a stock disposition
         flag = state.get("ui_flags", {}).get(item["key"])
         checked = state.get("ui_checked", {}).get(item["key"]) == sa.digest(text.encode("utf-8")) and current
+        included = bool(current and accepted["include"])
+        removed = current and not included and record["status"] == "found"
         references.append(dict(key=item["key"], group=item["field"]["id"], instance=record["instance_id"], label=item["label"],
                                field=item["field"]["label"], status=record["status"], value=record["value"],
                                explanation=record["explanation"], sources=sources, candidate_id=item["candidate_id"],
-                               original=original, text=text, approved=current, included=bool(current and accepted["include"]),
+                               original=original, text=text, approved=current, included=included, removed=removed,
+                               reason=accepted["reason"] if (current and removed) else "",
                                flag=flag, checked=checked))
     order = {identifier: n for n, (identifier, _) in enumerate(OBJECTIVE_GROUPS)}
     references.sort(key=lambda r: order.get(r["group"], 99))
@@ -300,6 +303,38 @@ def approve_item(workspace, item_key, text):
         updated = copy.deepcopy(state)
         result = sa.apply_review_decision(workspace, updated, candidate_id=ref["candidate_id"], reviewer=reviewer_name(workspace) or "Reviewer",
                                           text=text, reason=reason, exclude=not include)
+        for table in ("ui_drafts", "ui_flags", "ui_checked"):
+            updated.get(table, {}).pop(item_key, None)
+        path, data = result
+        backup = path.read_bytes() if path.exists() else None
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            sa.save(workspace, updated)
+        except OSError:
+            if backup is None:
+                path.unlink(missing_ok=True)
+            else:
+                path.write_bytes(backup)
+            raise
+
+
+def remove_item(workspace, item_key, reason):
+    """Exclude an Elsa-found objective from the memo; it stays visible, marked Removed, with a reason."""
+    with _LOCK:
+        state = sa.load(workspace)
+        ref = next((r for r in objective_references(workspace) if r["key"] == item_key), None)
+        if not ref:
+            raise ValueError("Unknown objective")
+        if ref["status"] != "found":
+            raise ValueError("Only an item Elsa found needs removing; an unfound item is already excluded.")
+        reason = reason.strip()
+        if not reason:
+            raise ValueError("Explain why this item should be removed.")
+        text = ref["text"].strip() or ref["original"].strip() or "Removed by reviewer."
+        updated = copy.deepcopy(state)
+        result = sa.apply_review_decision(workspace, updated, candidate_id=ref["candidate_id"], reviewer=reviewer_name(workspace) or "Reviewer",
+                                          text=text, reason=reason, exclude=True)
         for table in ("ui_drafts", "ui_flags", "ui_checked"):
             updated.get(table, {}).pop(item_key, None)
         path, data = result

@@ -317,6 +317,18 @@ def looks_good(workspace, ref):
         st.session_state["edit_error"] = svc.friendly_error(exc, workspace)
 
 
+def remove_reason_key(workspace, ref):
+    return "removereason:" + workspace.name + ":" + ref["key"]
+
+
+def remove_objective(workspace, ref):
+    try:
+        svc.remove_item(workspace, ref["key"], st.session_state.get(remove_reason_key(workspace, ref), ""))
+        st.session_state.pop(remove_reason_key(workspace, ref), None)
+    except (ValueError, OSError) as exc:
+        st.session_state["edit_error"] = str(exc)
+
+
 def reset_objective(workspace, ref):
     try:
         svc.reset_item(workspace, ref["key"])
@@ -359,21 +371,28 @@ def step_references(workspace):
             st.session_state.setdefault(box, ref["text"])
             unsaved = st.session_state[box] != ref["text"]
             done = ref["approved"] and not ref["flag"] and not unsaved
-            icon = "🚩 " if ref["flag"] else "✅ " if done else ""
+            icon = "🚩 " if ref["flag"] else "🗑️ " if ref["removed"] else "✅ " if done else ""
             with st.expander(icon + ref["name"], expanded=not done):
                 if ref["flag"]:
                     st.error("Flagged while checking the memo" + (": " + ref["flag"]["note"] if ref["flag"]["note"] else ".") + " Fix the wording, then click Looks good again.")
+                if ref["removed"]:
+                    st.info("Removed" + (": " + ref["reason"] if ref["reason"] else "") + ". It is left out of the memo. Click ↻ to bring it back.")
                 if ref["status"] != "found":
                     st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + " The box is empty; type the objective in if you find it yourself, or click Looks good to confirm there is none.")
                 st.text_area("Objective wording", key=box, height=120, label_visibility="collapsed")
                 if unsaved:
                     st.caption("🟠 Changes not confirmed yet. Click Looks good to keep them.")
-                good, locate, _, reset = st.columns([1.3, 1.5, 2.2, 0.6])
+                good, locate, reset = st.columns([1.4, 1.6, 0.6])
                 good.button("Looks good", key="good:" + box, type="primary", on_click=looks_good, args=(workspace, ref), use_container_width=True)
                 locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
                               help=None if ref["sources"] else "Elsa cited no passage for this item.")
                 reset.button("↻", key="reset:" + box, on_click=reset_objective, args=(workspace, ref), use_container_width=True,
                              help="Reset to Elsa's original text and clear any approval or flag")
+                if ref["status"] == "found" and not ref["removed"]:
+                    st.text_input("Reason for removing (required to remove)", key=remove_reason_key(workspace, ref),
+                                  placeholder="Why should this be removed? e.g. duplicate of another objective, not actually an objective",
+                                  label_visibility="collapsed")
+                    st.button("Remove this objective", key="remove:" + box, on_click=remove_objective, args=(workspace, ref), use_container_width=True)
                 if ref["sources"]:
                     with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
                         cited_passages(ref)

@@ -160,6 +160,29 @@ class UIServiceTests(unittest.TestCase):
         self.assertFalse(ui.section_done(self.workspace, 3))
         self.assertEqual(refs[primary]["original"], next(r for r in ui.objective_references(self.workspace) if r["key"] == primary)["text"])
 
+    def test_remove_item_excludes_a_found_objective_but_keeps_it_visible(self):
+        refs = {r["key"]: r for r in ui.objective_references(self.workspace)}
+        primary = "OBJECTIVES.PRIMARY/O_SCORE"
+        self.assertEqual("found", refs[primary]["status"])
+        for key, ref in refs.items():
+            ui.approve_item(self.workspace, key, ref["text"])
+        with self.assertRaisesRegex(ValueError, "Explain why"):
+            ui.remove_item(self.workspace, primary, "   ")
+        with self.assertRaises(ValueError):
+            ui.remove_item(self.workspace, "unknown/none", "duplicate")
+        original_text = next(r for r in ui.objective_references(self.workspace) if r["key"] == primary)["text"]
+        ui.remove_item(self.workspace, primary, "Duplicate of another stated objective")
+        removed = next(r for r in ui.objective_references(self.workspace) if r["key"] == primary)
+        self.assertTrue(removed["removed"])
+        self.assertFalse(removed["included"])
+        self.assertEqual("Duplicate of another stated objective", removed["reason"])
+        self.assertEqual(original_text, removed["text"])  # wording preserved, just excluded
+        self.assertNotIn(primary, [r["key"] for r in ui.memo_items(self.workspace)])
+        ui.reset_item(self.workspace, primary)
+        restored = next(r for r in ui.objective_references(self.workspace) if r["key"] == primary)
+        self.assertFalse(restored["removed"])
+        self.assertFalse(restored["approved"])
+
     def test_memo_check_and_export_ready_follow_the_memo_content(self):
         for ref in ui.objective_references(self.workspace):
             ui.approve_item(self.workspace, ref["key"], ref["text"])
