@@ -453,9 +453,14 @@ def memo_check(workspace):
                 continue
             st.markdown("#### " + heading)
             for ref in group:
-                with st.container(border=True):
-                    status = "🚩 Flagged" if ref["flag"] else "✅ Checked" if ref["checked"] else "Not checked yet"
-                    st.markdown(f"**{ref['name']}** · {status}")
+                done = ref["checked"] or bool(ref["flag"])
+                if ref["flag"]:
+                    icon, status = "🚩", "Flagged (Notes Added)" if ref["flag"]["note"] else "Flagged"
+                elif ref["checked"]:
+                    icon, status = "✅", "Checked"
+                else:
+                    icon, status = None, "Not checked yet"
+                with st.expander(f"**{ref['name']}** · {status}", icon=icon, expanded=not done):
                     st.write(ref["text"])
                     if ref["flag"] and ref["flag"]["note"]:
                         st.caption("Your note: " + ref["flag"]["note"])

@@ -707,6 +707,17 @@ def assemble(workspace):
                     if descendants:
                         lines.extend(["    " * field["depth"] + "- **" + field["label"] + ":**", ""])
                     continue
+                if section.get("numbered"):
+                    heading = field.get("heading", field["label"])
+                    if len(values) == 1 and values[0][0] is None:
+                        lines.extend(["**" + heading + ":** " + values[0][1], ""])
+                    elif not values:
+                        lines.extend(["**" + heading + ":** Omitted by reviewer-approved disposition.", ""])
+                    else:
+                        lines.extend(["**" + heading + ":**", ""])
+                        lines.extend(f"{number}. {text}" for number, (_, text) in enumerate(values, 1))
+                        lines.append("")
+                    continue
                 for label, text in values:
                     suffix = (" — " + escape(label)) if label and not entity else ""
                     title = field["label"] + suffix
