@@ -19,10 +19,32 @@ BATCHES = [("Objectives, design and endpoints", "3,4,5"),
            ("Hypotheses and analyses", "6,7,8"),
            ("Background, interim plans and sample size", "2,9,10"),
            ("Factual executive summary", "1")]
-OBJECTIVE_FIELDS = "OBJECTIVES.PRIMARY,OBJECTIVES.OTHER,OBJECTIVES.EXPLORATORY"
-OBJECTIVE_GROUPS = [("OBJECTIVES.PRIMARY", "Primary objectives"), ("OBJECTIVES.OTHER", "Secondary objectives"),
-                    ("OBJECTIVES.EXPLORATORY", "Other objectives (exploratory, etc.)")]
 OBJECTIVES_SECTION = 3
+ENDPOINTS_SECTION = 5
+# Sections built as a list of Elsa-extracted, per-item bulletins (locate/approve/flag/remove),
+# rather than the single free-text editable box used for every other section so far.
+LIST_SECTIONS = {
+    OBJECTIVES_SECTION: dict(
+        batch=0,
+        fields="OBJECTIVES.PRIMARY,OBJECTIVES.OTHER,OBJECTIVES.EXPLORATORY",
+        groups=[("OBJECTIVES.PRIMARY", "Primary objectives"), ("OBJECTIVES.OTHER", "Secondary objectives"),
+                ("OBJECTIVES.EXPLORATORY", "Other objectives (exploratory, etc.)")],
+        names={"OBJECTIVES.PRIMARY": "Primary Objective", "OBJECTIVES.OTHER": "Secondary Objective",
+               "OBJECTIVES.EXPLORATORY": "Other Objective"},
+        noun="objective",
+        prompt_caption="Asks Elsa for every primary, secondary and other (for example exploratory) objective, "
+                       "quoted word for word with its source page. Each objective is sorted by the sponsor's own label.",
+    ),
+    ENDPOINTS_SECTION: dict(
+        batch=0,
+        fields="ENDPOINTS.PRIMARY,ENDPOINTS.SECONDARY",
+        groups=[("ENDPOINTS.PRIMARY", "Primary endpoints"), ("ENDPOINTS.SECONDARY", "Secondary endpoints")],
+        names={"ENDPOINTS.PRIMARY": "Primary Endpoint", "ENDPOINTS.SECONDARY": "Secondary Endpoint"},
+        noun="endpoint",
+        prompt_caption="Asks Elsa for every primary and secondary endpoint definition, quoted word for word with "
+                       "its source page. Each endpoint is sorted by the sponsor's own label.",
+    ),
+}
 _LOCK = threading.RLock()
 
 
@@ -161,14 +183,19 @@ def create_request(workspace, batch, custom_fields=None):
         return request_id
 
 
-def objectives_request(workspace):
-    """Return the latest still-valid request for the objectives fields, else None."""
+def list_request(workspace, number):
+    """Return the latest still-valid request for this list section's fields, else None."""
     state = sa.load(workspace)
     sources = {k: sa.public_source(v) for k, v in state["sources"].items()}
+    fields = LIST_SECTIONS[number]["fields"]
     for request_id, manifest in reversed(list(state["requests"].items())):
-        if manifest.get("ui_custom_fields") == OBJECTIVE_FIELDS and manifest["sources"] == sources:
+        if manifest.get("ui_custom_fields") == fields and manifest["sources"] == sources:
             return request_id
     return None
+
+
+def objectives_request(workspace):
+    return list_request(workspace, OBJECTIVES_SECTION)
 
 
 def prepare_objectives(workspace):
@@ -179,7 +206,17 @@ def prepare_objectives(workspace):
             if state["reviewed"]:
                 raise ValueError("This review was created before other (exploratory) objectives were added and already has approved answers. Start a new review to extract them.")
             shutil.copyfile(sa.ASSETS / "catalog.json", workspace / "stage_a/catalog.json")
-    return create_request(workspace, 0, OBJECTIVE_FIELDS)
+    config = LIST_SECTIONS[OBJECTIVES_SECTION]
+    return create_request(workspace, config["batch"], config["fields"])
+
+
+def prepare_endpoints(workspace):
+    config = LIST_SECTIONS[ENDPOINTS_SECTION]
+    return create_request(workspace, config["batch"], config["fields"])
+
+
+def prepare_section(workspace, number):
+    return {OBJECTIVES_SECTION: prepare_objectives, ENDPOINTS_SECTION: prepare_endpoints}[number](workspace)
 
 
 def elsa_filename(request_id):
@@ -231,16 +268,13 @@ def find_download(folder, request_id):
     return max(matches, key=lambda p: p.stat().st_mtime)
 
 
-OBJECTIVE_NAMES = {"OBJECTIVES.PRIMARY": "Primary Objective", "OBJECTIVES.OTHER": "Secondary Objective",
-                   "OBJECTIVES.EXPLORATORY": "Other Objective"}
-
-
-def objective_references(workspace):
-    """Extracted objectives with evidence, review status and flags, in display order."""
+def list_references(workspace, number):
+    """Extracted items for a list section (objectives, endpoints, ...) with evidence, review status and flags, in display order."""
+    config = LIST_SECTIONS[number]
     state = sa.load(workspace)
     versions = source_versions(workspace)
     references = []
-    for item in section_items(workspace, OBJECTIVES_SECTION, state):
+    for item in section_items(workspace, number, state):
         candidate = item["candidate"]
         if not candidate:
             continue
@@ -270,14 +304,42 @@ def objective_references(workspace):
                                original=original, text=text, approved=current, included=included, removed=removed,
                                reason=accepted["reason"] if (current and removed) else "",
                                flag=flag, checked=checked))
-    order = {identifier: n for n, (identifier, _) in enumerate(OBJECTIVE_GROUPS)}
+    order = {identifier: n for n, (identifier, _) in enumerate(config["groups"])}
     references.sort(key=lambda r: order.get(r["group"], 99))
     counts = {}
     for ref in references:
         counts[ref["group"]] = counts.get(ref["group"], 0) + 1
-        base = OBJECTIVE_NAMES.get(ref["group"], ref["field"])
+        base = config["names"].get(ref["group"], ref["field"])
         ref["name"] = f"{base} {counts[ref['group']]}" if ref["instance"] != "none" else base + "s (none found by Elsa)"
     return references
+
+
+def objective_references(workspace):
+    return list_references(workspace, OBJECTIVES_SECTION)
+
+
+def endpoint_references(workspace):
+    return list_references(workspace, ENDPOINTS_SECTION)
+
+
+def all_groups():
+    """Group headings across every list section, in section order, for the memo check."""
+    groups = []
+    for number in sorted(LIST_SECTIONS):
+        groups += LIST_SECTIONS[number]["groups"]
+    return groups
+
+
+def item_number(workspace, item_key):
+    field = sa.fields(workspace).get(item_key.split("/", 1)[0])
+    return field["section"] if field else None
+
+
+def find_reference(workspace, item_key):
+    number = item_number(workspace, item_key)
+    if number not in LIST_SECTIONS:
+        return None
+    return next((r for r in list_references(workspace, number) if r["key"] == item_key), None)
 
 
 def reviewer_name(workspace):
@@ -285,21 +347,22 @@ def reviewer_name(workspace):
 
 
 def approve_item(workspace, item_key, text):
-    """'Looks good': approve one objective's wording so it can reach the memo."""
+    """'Looks good': approve one item's wording so it can reach the memo."""
     with _LOCK:
         state = sa.load(workspace)
-        ref = next((r for r in objective_references(workspace) if r["key"] == item_key), None)
+        ref = find_reference(workspace, item_key)
         if not ref:
             raise ValueError("Unknown objective")
+        noun = LIST_SECTIONS[item_number(workspace, item_key)]["noun"]
         text, status = text.strip(), ref["status"]
         if text:
             include = True
             reason = "" if status == "found" else "Wording entered by the reviewer; Elsa did not extract this item."
         elif status == "found":
-            raise ValueError("Enter the objective wording, or reset to Elsa's text.")
+            raise ValueError(f"Enter the {noun} wording, or reset to Elsa's text.")
         else:
             text, include = sa.DISPOSITIONS[status], False
-            reason = ref["explanation"] or "Reviewer confirmed that no such objective is stated."
+            reason = ref["explanation"] or f"Reviewer confirmed that no such {noun} is stated."
         updated = copy.deepcopy(state)
         result = sa.apply_review_decision(workspace, updated, candidate_id=ref["candidate_id"], reviewer=reviewer_name(workspace) or "Reviewer",
                                           text=text, reason=reason, exclude=not include)
@@ -320,10 +383,10 @@ def approve_item(workspace, item_key, text):
 
 
 def remove_item(workspace, item_key, reason):
-    """Exclude an Elsa-found objective from the memo; it stays visible, marked Removed, with a reason."""
+    """Exclude an Elsa-found item from the memo; it stays visible, marked Removed, with a reason."""
     with _LOCK:
         state = sa.load(workspace)
-        ref = next((r for r in objective_references(workspace) if r["key"] == item_key), None)
+        ref = find_reference(workspace, item_key)
         if not ref:
             raise ValueError("Unknown objective")
         if ref["status"] != "found":
@@ -388,13 +451,13 @@ def section_done(workspace, number):
     state = sa.load(workspace)
     if not state.get("ui_sections_done", {}).get(str(number)):
         return False
-    refs = objective_references(workspace) if number == OBJECTIVES_SECTION else []
+    refs = list_references(workspace, number) if number in LIST_SECTIONS else []
     return bool(refs) and all(r["approved"] and not r["flag"] for r in refs)
 
 
 def complete_section(workspace, number):
     with _LOCK:
-        refs = objective_references(workspace) if number == OBJECTIVES_SECTION else []
+        refs = list_references(workspace, number) if number in LIST_SECTIONS else []
         if not refs or not all(r["approved"] and not r["flag"] for r in refs):
             raise ValueError("Click Looks good on every item first.")
         state = sa.load(workspace)
@@ -402,9 +465,15 @@ def complete_section(workspace, number):
         sa.save(workspace, state)
 
 
+def all_sections_done(workspace):
+    """Every list section this app can review so far has been finished."""
+    return all(section_done(workspace, number) for number in LIST_SECTIONS)
+
+
 def memo_items(workspace):
     """What the memo will say for the finished section(s), for the Export check."""
-    return [r for r in objective_references(workspace) if r["included"]]
+    items = [r for number in LIST_SECTIONS for r in list_references(workspace, number)]
+    return [r for r in items if r["included"]]
 
 
 def content_hash(workspace):

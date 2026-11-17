@@ -197,6 +197,58 @@ class UIServiceTests(unittest.TestCase):
         self.assertFalse(ui.export_ready(self.workspace))  # changed content must be re-checked
         self.assertFalse(next(r for r in ui.memo_items(self.workspace) if r["key"] == keys[0])["checked"])
 
+    def test_endpoints_item_approval_flag_and_section_lifecycle(self):
+        refs = {r["key"]: r for r in ui.endpoint_references(self.workspace)}
+        primary = "ENDPOINTS.PRIMARY/SCORE"
+        with self.assertRaisesRegex(ValueError, "Enter the endpoint wording"):
+            ui.approve_item(self.workspace, primary, "   ")
+        with self.assertRaises(ValueError):
+            ui.flag_item(self.workspace, primary, "premature")  # only approved wording can be flagged
+        for key, ref in refs.items():
+            ui.approve_item(self.workspace, key, ref["text"] + (" (edited)" if key == primary else ""))
+        approved = {r["key"]: r for r in ui.endpoint_references(self.workspace)}
+        self.assertTrue(all(r["approved"] for r in approved.values()))
+        self.assertTrue(approved[primary]["text"].endswith("(edited)"))
+        self.assertFalse(ui.section_done(self.workspace, ui.ENDPOINTS_SECTION))  # approving items does not finish the section
+        ui.complete_section(self.workspace, ui.ENDPOINTS_SECTION)
+        self.assertTrue(ui.section_done(self.workspace, ui.ENDPOINTS_SECTION))
+        ui.flag_item(self.workspace, primary, "check the quote")
+        self.assertFalse(ui.section_done(self.workspace, ui.ENDPOINTS_SECTION))  # a flag removes the section check
+        ui.approve_item(self.workspace, primary, approved[primary]["text"])  # Looks good clears the flag
+        self.assertTrue(ui.section_done(self.workspace, ui.ENDPOINTS_SECTION))
+
+    def test_remove_endpoint_item_excludes_it_but_keeps_it_visible(self):
+        refs = {r["key"]: r for r in ui.endpoint_references(self.workspace)}
+        primary = "ENDPOINTS.PRIMARY/SCORE"
+        self.assertEqual("found", refs[primary]["status"])
+        for key, ref in refs.items():
+            ui.approve_item(self.workspace, key, ref["text"])
+        with self.assertRaisesRegex(ValueError, "Explain why"):
+            ui.remove_item(self.workspace, primary, "   ")
+        ui.remove_item(self.workspace, primary, "Duplicate of another stated endpoint")
+        removed = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == primary)
+        self.assertTrue(removed["removed"])
+        self.assertFalse(removed["included"])
+        self.assertNotIn(primary, [r["key"] for r in ui.memo_items(self.workspace)])
+        ui.reset_item(self.workspace, primary)
+        restored = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == primary)
+        self.assertFalse(restored["removed"])
+        self.assertFalse(restored["approved"])
+
+    def test_memo_items_and_all_sections_done_span_every_list_section(self):
+        self.assertFalse(ui.all_sections_done(self.workspace))
+        for ref in ui.objective_references(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        ui.complete_section(self.workspace, ui.OBJECTIVES_SECTION)
+        self.assertFalse(ui.all_sections_done(self.workspace))  # endpoints still open
+        for ref in ui.endpoint_references(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        ui.complete_section(self.workspace, ui.ENDPOINTS_SECTION)
+        self.assertTrue(ui.all_sections_done(self.workspace))
+        keys = [r["key"] for r in ui.memo_items(self.workspace)]
+        self.assertTrue(any(k.startswith("ENDPOINTS.") for k in keys))
+        self.assertTrue(any(k.startswith("OBJECTIVES.") for k in keys))
+
 
 if __name__ == "__main__":
     unittest.main()

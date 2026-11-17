@@ -19,8 +19,8 @@ if HAS_UI:
     from streamlit.testing.v1 import AppTest
 
 
-def svc_request(workspace):
-    return ui.objectives_request(workspace)
+def svc_request(workspace, number=None):
+    return ui.list_request(workspace, number if number is not None else ui.OBJECTIVES_SECTION)
 
 
 @unittest.skipUnless(HAS_UI, "Install requirements-ui.txt to run Streamlit interaction tests")
@@ -61,6 +61,23 @@ class StreamlitTests(unittest.TestCase):
                             "OBJECTIVES.EXPLORATORY": [dict(instance_id="none", status="not_found", value=None, sources=[],
                                                             explanation="No exploratory objectives in the test PDF.")]})
 
+    def endpoints_payload(self, request_id, page=1, excerpt="Endpoints:"):
+        def record(instance, value):
+            return dict(instance_id=instance, status="found", value=value, explanation="", sources=[dict(
+                document_id="PROTOCOL", pdf_page=page, printed_page=None, section="Endpoints", exact_excerpt=excerpt)])
+        return dict(schema_version=1, catalog_version=1, request_id=request_id, search_scope="Test PDF only.",
+                    entities=[dict(id="PE1", kind="primary_endpoint", label="Primary endpoint 1"),
+                              dict(id="SE1", kind="secondary_endpoint", label="Secondary endpoint 1")],
+                    fields={"ENDPOINTS.PRIMARY": [record("PE1", excerpt)], "ENDPOINTS.SECONDARY": [record("SE1", excerpt)]})
+
+    def prepare_button(self, app, workspace, number):
+        """Select a section's own Prepare prompt button by key: two sections can show that label at once."""
+        return next(b for b in app.button if b.key == f"prepare:{number}:{workspace.name}")
+
+    def section_button(self, app, workspace, number, suffix):
+        """Select a section's own Back/Next/Finish stepper button by key, for the same reason."""
+        return next(b for b in app.button if b.key == f"step:{workspace.name}:list{number}:{suffix}")
+
     def workspace_with_pdf(self):
         app = self.start()
         app.text_input[0].input("Study review")
@@ -84,7 +101,7 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Next →").click().run()
         self.assertFalse(app.code)  # the prompt step is hidden after moving on
         self.assertTrue(self.button(app, "Next →").disabled)  # nothing loaded yet
-        app.text_area(key=f"paste:{workspace.name}").input("{}").run()
+        app.text_area(key=f"paste:{ui.OBJECTIVES_SECTION}:{workspace.name}").input("{}").run()
         self.button(app, "Load pasted JSON").click().run()
         self.assertTrue(app.error)
         self.assertEqual({}, sa.load(workspace)["imports"])
@@ -97,9 +114,17 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Next →").click().run()
         self.assert_clean(app)
 
-    def approve_all(self, app, count=3):
+    def load_endpoints(self, app, workspace, payload=None):
+        self.prepare_button(app, workspace, ui.ENDPOINTS_SECTION).click().run()
+        request_id = svc_request(workspace, ui.ENDPOINTS_SECTION)
+        ui.import_bytes(workspace, json.dumps(payload or self.endpoints_payload(request_id)).encode())
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "next").click().run()
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "next").click().run()
+        self.assert_clean(app)
+
+    def approve_all(self, app, count=3, marker="OBJECTIVES."):
         for index in range(count):
-            [b for b in app.button if b.label == "Looks good"][index].click().run()
+            [b for b in app.button if b.label == "Looks good" and marker in b.key][index].click().run()
 
     def box(self, app, workspace, key):
         return next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:{key}:"))
@@ -112,7 +137,7 @@ class StreamlitTests(unittest.TestCase):
         downloads.mkdir()
         (downloads / ui.elsa_filename(request_id)).write_text(json.dumps(self.objectives_payload(request_id)))
         self.button(app, "Next →").click().run()
-        app.text_input(key=f"folder:{workspace.name}").input(str(downloads)).run()
+        app.text_input(key=f"folder:{ui.OBJECTIVES_SECTION}:{workspace.name}").input(str(downloads)).run()
         self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
         self.assertEqual(3, len(sa.load(workspace)["candidates"]))
@@ -185,6 +210,13 @@ class StreamlitTests(unittest.TestCase):
         header = next(e for e in app.expander if e.label.endswith("3. Primary Objective(s)"))
         self.assertEqual("✅ 3. Primary Objective(s)", header.label)
         self.assertFalse(header.proto.expanded)
+        self.assertTrue(self.button(app, "Continue to Export →").disabled)  # endpoints is still open
+        self.load_endpoints(app, workspace)
+        self.approve_all(app, count=2, marker="ENDPOINTS.")
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "finish").click().run()
+        self.assert_clean(app)
+        endpoints_header = next(e for e in app.expander if e.label.endswith("5. Endpoints"))
+        self.assertEqual("✅ 5. Endpoints", endpoints_header.label)
         self.button(app, "Continue to Export →").click().run()
         self.assertEqual("Export", app.session_state["screen"])
 
@@ -192,6 +224,9 @@ class StreamlitTests(unittest.TestCase):
         self.load_objectives(app, workspace)
         self.approve_all(app)
         self.button(app, "Finish this section ✓").click().run()
+        self.load_endpoints(app, workspace)
+        self.approve_all(app, count=2, marker="ENDPOINTS.")
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "finish").click().run()
         self.button(app, "Continue to Export →").click().run()
         self.assert_clean(app)
 
@@ -245,6 +280,36 @@ class StreamlitTests(unittest.TestCase):
         labels = [e.label for e in app.expander if e.label[0].isdigit()]
         self.assertEqual(13, len(labels))
         self.assertIn("3. Primary Objective(s)", labels)
+        self.assertIn("5. Endpoints", labels)
+        design = next(e for e in app.expander if e.label.endswith("4. Design Features"))
+        self.assertFalse(design.label.startswith("✅"))
+
+    def test_endpoints_section_mirrors_objectives_flow(self):
+        app, workspace = self.workspace_with_pdf()
+        self.prepare_button(app, workspace, ui.ENDPOINTS_SECTION).click().run()
+        self.assert_clean(app)
+        request_id = svc_request(workspace, ui.ENDPOINTS_SECTION)
+        self.assertTrue(any(request_id in code.value for code in app.code))
+        ui.import_bytes(workspace, json.dumps(self.endpoints_payload(request_id)).encode())
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "next").click().run()
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "next").click().run()
+        self.assert_clean(app)
+        headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
+        self.assertIn("#### Primary endpoints", headings)
+        self.assertIn("#### Secondary endpoints", headings)
+        names = [e.label for e in app.expander if "Endpoint" in e.label and not e.label[0].isdigit()]
+        self.assertEqual(["Primary Endpoint 1", "Secondary Endpoint 1"], names)
+        box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:ENDPOINTS.PRIMARY/PE1:"))
+        box.input("Edited primary endpoint").run()
+        next(b for b in app.button if b.label == "Looks good" and "ENDPOINTS.PRIMARY/PE1" in b.key).click().run()
+        self.assert_clean(app)
+        self.assertEqual("Edited primary endpoint", sa.load(workspace)["reviewed"]["ENDPOINTS.PRIMARY/PE1"]["text"])
+        next(b for b in app.button if b.label == "Looks good" and "ENDPOINTS.SECONDARY/SE1" in b.key).click().run()
+        self.assert_clean(app)
+        self.section_button(app, workspace, ui.ENDPOINTS_SECTION, "finish").click().run()
+        self.assert_clean(app)
+        header = next(e for e in app.expander if e.label.endswith("5. Endpoints"))
+        self.assertEqual("✅ 5. Endpoints", header.label)
 
     @unittest.skipUnless(os.environ.get("PANDOC") or shutil.which("pandoc"), "Set PANDOC for Word download control test")
     def test_word_generation_exposes_download_control(self):

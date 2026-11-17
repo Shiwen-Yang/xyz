@@ -252,14 +252,14 @@ def stepper(workspace, name, steps, finish=None):
         forward.button(label, key=key + ":finish", type="primary", disabled=not can_finish(), on_click=on_finish, use_container_width=True)
 
 
-def step_prompt(workspace):
+def step_prompt(workspace, number):
     state = sa.load(workspace)
-    request_id = svc.objectives_request(workspace)
-    st.caption("Asks Elsa for every primary, secondary and other (for example exploratory) objective, quoted word for word with its source page. Each objective is sorted by the sponsor's own label.")
+    request_id = svc.list_request(workspace, number)
+    st.caption(svc.LIST_SECTIONS[number]["prompt_caption"])
     if not request_id:
-        if st.button("Prepare prompt", type="primary", key="prepare:" + workspace.name):
+        if st.button("Prepare prompt", type="primary", key=f"prepare:{number}:{workspace.name}"):
             try:
-                svc.prepare_objectives(workspace)
+                svc.prepare_section(workspace, number)
                 st.rerun()
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
@@ -280,14 +280,14 @@ def step_prompt(workspace):
     st.caption("When Elsa has answered, ask it to download the JSON, then click Next.")
 
 
-def step_response(workspace):
-    request_id = svc.objectives_request(workspace)
+def step_response(workspace, number):
+    request_id = svc.list_request(workspace, number)
     filename = svc.elsa_filename(request_id)
     st.caption("The prompt asks Elsa to name its download `" + filename + "`.")
     folder_tab, upload_tab, paste_tab = st.tabs(["Downloads folder", "Upload file", "Paste JSON"])
     with folder_tab:
-        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key="folder:" + workspace.name)
-        if st.button("Load response from this folder", type="primary", key="loadfolder:" + workspace.name):
+        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key=f"folder:{number}:{workspace.name}")
+        if st.button("Load response from this folder", type="primary", key=f"loadfolder:{number}:{workspace.name}"):
             try:
                 found = svc.find_download(folder, request_id)
                 svc.remember_download_dir(workspace, folder)
@@ -295,14 +295,14 @@ def step_response(workspace):
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
     with upload_tab:
-        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key="upload:" + workspace.name)
-        if st.button("Load uploaded file", disabled=uploaded is None, key="loadupload:" + workspace.name):
+        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key=f"upload:{number}:{workspace.name}")
+        if st.button("Load uploaded file", disabled=uploaded is None, key=f"loadupload:{number}:{workspace.name}"):
             load_response(workspace, uploaded.getvalue())
     with paste_tab:
-        pasted = st.text_area("Paste Elsa's JSON", height=140, key="paste:" + workspace.name)
-        if st.button("Load pasted JSON", disabled=not pasted.strip(), key="loadpaste:" + workspace.name):
+        pasted = st.text_area("Paste Elsa's JSON", height=140, key=f"paste:{number}:{workspace.name}")
+        if st.button("Load pasted JSON", disabled=not pasted.strip(), key=f"loadpaste:{number}:{workspace.name}"):
             load_response(workspace, pasted.encode("utf-8"))
-    if svc.objective_references(workspace):
+    if svc.list_references(workspace, number):
         st.success("A response is loaded. Click Next to see the references.")
 
 
@@ -358,10 +358,11 @@ def cited_passages(ref):
         st.markdown("> " + source["exact_excerpt"].replace("\n", " "))
 
 
-def step_references(workspace):
-    references = svc.objective_references(workspace)
-    st.caption("Check each objective against the PDF (Locate reference), correct the wording if needed, then click Looks good. A match only shows where the text was found; you still read and verify it.")
-    for identifier, heading in svc.OBJECTIVE_GROUPS:
+def step_references(workspace, number):
+    references = svc.list_references(workspace, number)
+    noun = svc.LIST_SECTIONS[number]["noun"]
+    st.caption(f"Check each {noun} against the PDF (Locate reference), correct the wording if needed, then click Looks good. A match only shows where the text was found; you still read and verify it.")
+    for identifier, heading in svc.LIST_SECTIONS[number]["groups"]:
         st.markdown("#### " + heading)
         group = [r for r in references if r["group"] == identifier]
         if not group:
@@ -378,8 +379,8 @@ def step_references(workspace):
                 if ref["removed"]:
                     st.info("Removed" + (": " + ref["reason"] if ref["reason"] else "") + ". It is left out of the memo. Click ↻ to bring it back.")
                 if ref["status"] != "found":
-                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + " The box is empty; type the objective in if you find it yourself, or click Looks good to confirm there is none.")
-                st.text_area("Objective wording", key=box, height=120, label_visibility="collapsed")
+                    st.warning(ref["status"].replace("_", " ").capitalize() + (": " + ref["explanation"] if ref["explanation"] else "") + f" The box is empty; type the {noun} in if you find it yourself, or click Looks good to confirm there is none.")
+                st.text_area(noun.capitalize() + " wording", key=box, height=120, label_visibility="collapsed")
                 if unsaved:
                     st.caption("🟠 Changes not confirmed yet. Click Looks good to keep them.")
                 good, locate, reset = st.columns([1.4, 1.6, 0.6])
@@ -390,9 +391,9 @@ def step_references(workspace):
                              help="Reset to Elsa's original text and clear any approval or flag")
                 if ref["status"] == "found" and not ref["removed"]:
                     st.text_input("Reason for removing (required to remove)", key=remove_reason_key(workspace, ref),
-                                  placeholder="Why should this be removed? e.g. duplicate of another objective, not actually an objective",
+                                  placeholder=f"Why should this be removed? e.g. duplicate of another {noun}, not actually an {noun}",
                                   label_visibility="collapsed")
-                    st.button("Remove this objective", key="remove:" + box, on_click=remove_objective, args=(workspace, ref), use_container_width=True)
+                    st.button(f"Remove this {noun}", key="remove:" + box, on_click=remove_objective, args=(workspace, ref), use_container_width=True)
                 if ref["sources"]:
                     with st.expander(f"Elsa's cited passage{'s' if len(ref['sources']) > 1 else ''} ({len(ref['sources'])})"):
                         cited_passages(ref)
@@ -407,13 +408,14 @@ def finish_section(workspace, number):
         st.session_state["edit_error"] = str(exc)
 
 
-def objectives_section(workspace):
-    number = svc.OBJECTIVES_SECTION
-    stepper(workspace, "objectives", [
-        ("Prompt for Elsa", lambda: step_prompt(workspace), lambda: svc.objectives_request(workspace) is not None),
-        ("Bring Elsa's response back", lambda: step_response(workspace), lambda: bool(svc.objective_references(workspace))),
-        ("Check each objective", lambda: step_references(workspace), lambda: False),
-    ], finish=("Finish this section ✓", lambda: bool(svc.objective_references(workspace)) and all(r["approved"] and not r["flag"] for r in svc.objective_references(workspace)),
+def list_section(workspace, number):
+    """A section built as per-item Elsa bulletins (objectives, endpoints, ...)."""
+    noun = svc.LIST_SECTIONS[number]["noun"]
+    stepper(workspace, f"list{number}", [
+        ("Prompt for Elsa", lambda: step_prompt(workspace, number), lambda: svc.list_request(workspace, number) is not None),
+        ("Bring Elsa's response back", lambda: step_response(workspace, number), lambda: bool(svc.list_references(workspace, number))),
+        (f"Check each {noun}", lambda: step_references(workspace, number), lambda: False),
+    ], finish=("Finish this section ✓", lambda: bool(svc.list_references(workspace, number)) and all(r["approved"] and not r["flag"] for r in svc.list_references(workspace, number)),
                lambda: finish_section(workspace, number)))
 
 
@@ -428,16 +430,17 @@ def review_workspace(workspace):
         with st.container(height=820):
             for section in catalog["sections"]:
                 number, title = section["number"], section["title"].rstrip(": ")
-                active = number == svc.OBJECTIVES_SECTION
+                active = number in svc.LIST_SECTIONS
                 done = active and svc.section_done(workspace, number)
                 with st.expander(("✅ " if done else "") + f"{number}. {title}", expanded=active and not done):
                     if active:
-                        objectives_section(workspace)
+                        list_section(workspace, number)
                     else:
                         st.caption("Not available in this workspace yet.")
+        all_done = svc.all_sections_done(workspace)
         st.button("Continue to Export →", type="primary", on_click=navigate, args=("Export",),
-                  disabled=not svc.section_done(workspace, svc.OBJECTIVES_SECTION), use_container_width=True,
-                  help=None if svc.section_done(workspace, svc.OBJECTIVES_SECTION) else "Finish the section above first.")
+                  disabled=not all_done, use_container_width=True,
+                  help=None if all_done else "Finish the section(s) above first.")
 
 
 def flag_objective(workspace, ref):
@@ -466,7 +469,7 @@ def memo_check(workspace):
     st.caption("This is what the memo will say. Click Locate reference to see each statement's source in the PDF, then mark it Looks right, or flag a problem.")
     st.progress((len(items) - len(unchecked)) / len(items), text=f"{len(items) - len(unchecked)} of {len(items)} checked")
     with st.container(height=560):
-        for identifier, heading in svc.OBJECTIVE_GROUPS:
+        for identifier, heading in svc.all_groups():
             group = [r for r in items if r["group"] == identifier]
             if not group:
                 continue
@@ -489,7 +492,7 @@ def memo_check(workspace):
                     good.button("Looks right", key="mgood:" + ref["key"], on_click=check_objective, args=(workspace, ref), use_container_width=True)
                     flag.button("Flag a problem", key="mflag:" + ref["key"], on_click=flag_objective, args=(workspace, ref), use_container_width=True)
     sections = sa.catalog(workspace)["sections"]
-    pending = [str(s["number"]) for s in sections if not (s["number"] == svc.OBJECTIVES_SECTION and svc.section_done(workspace, s["number"]))]
+    pending = [str(s["number"]) for s in sections if not (s["number"] in svc.LIST_SECTIONS and svc.section_done(workspace, s["number"]))]
     st.caption("Sections not reviewed in this app yet (shown as pending in the draft memo): " + ", ".join(pending) + ".")
     if flagged:
         st.warning(f"{len(flagged)} flagged. Go back to the Review workspace to fix them; they are reopened there.")
