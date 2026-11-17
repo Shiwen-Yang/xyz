@@ -679,6 +679,20 @@ def assemble(workspace):
         return result
 
     for section in catalog(workspace)["sections"]:
+        if section.get("numbered"):
+            for field in section["fields"]:
+                heading = field.get("heading", field["label"])
+                values = render_field(field)
+                lines = ["# " + heading + ":", ""]
+                if len(values) == 1 and values[0][0] is None:
+                    lines.extend([values[0][1], ""])
+                elif not values:
+                    lines.extend(["Omitted by reviewer-approved disposition.", ""])
+                else:
+                    lines.extend(f"{number}. {text}" for number, (_, text) in enumerate(values, 1))
+                    lines.append("")
+                sections.append("\n".join(lines).strip())
+            continue
         lines = ["# " + section["title"], ""]
         if section["number"] in {7, 8}:
             scope = "primary_endpoint" if section["number"] == 7 else "secondary_endpoint"
@@ -706,17 +720,6 @@ def assemble(workspace):
                         descendants.extend(child_values or [])
                     if descendants:
                         lines.extend(["    " * field["depth"] + "- **" + field["label"] + ":**", ""])
-                    continue
-                if section.get("numbered"):
-                    heading = field.get("heading", field["label"])
-                    if len(values) == 1 and values[0][0] is None:
-                        lines.extend(["**" + heading + ":** " + values[0][1], ""])
-                    elif not values:
-                        lines.extend(["**" + heading + ":** Omitted by reviewer-approved disposition.", ""])
-                    else:
-                        lines.extend(["**" + heading + ":**", ""])
-                        lines.extend(f"{number}. {text}" for number, (_, text) in enumerate(values, 1))
-                        lines.append("")
                     continue
                 for label, text in values:
                     suffix = (" — " + escape(label)) if label and not entity else ""
