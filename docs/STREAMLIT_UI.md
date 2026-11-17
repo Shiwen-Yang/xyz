@@ -61,10 +61,10 @@ The app rejects malformed, incomplete, unmatched, or structurally invalid respon
 
 ### 3. Export
 
-The Export screen has the PDF on the left and the memo check on the right. Each statement the memo will contain appears as a bulletin:
+The Export screen has the PDF on the left and the memo check on the right. Each statement the memo will contain appears as a bulletin, grouped and ordered the same way the exported Endpoints section is: each objective, immediately followed by the endpoints linked to it (an endpoint's bulletin stays locked until its own objective is marked checked), then any objective with no linked endpoint, then endpoints linked to nothing in particular:
 
 - **Locate reference** shows its source in the PDF.
-- **Looks right** marks it checked.
+- **Looks right** marks it checked. On an endpoint, this is disabled until its objective is checked.
 - **Flag a problem** (with an optional note) flags it. The flagged bulletin is reopened in the Review workspace with your note, and its section loses its green check until you click **Looks good** again.
 
 When every bulletin is checked and none is flagged, **All Set ✓** unlocks the downloads. If you change any wording afterwards, the memo must be checked again. **Back to Review workspace to edit** is always available.

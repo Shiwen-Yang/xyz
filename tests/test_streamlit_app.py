@@ -261,6 +261,19 @@ class StreamlitTests(unittest.TestCase):
         self.assertTrue(ui.export_ready(workspace))
         self.assertTrue(any(w.label == "Download draft Markdown" for w in app.get("download_button")))
 
+    def test_export_check_groups_by_objective_and_locks_endpoints_until_checked(self):
+        app, workspace = self.workspace_with_pdf()
+        self.finish_unit(app, workspace)
+        headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
+        self.assertEqual(["#### Primary Objectives and Endpoints", "#### Secondary Objectives and Endpoints"], headings)
+        self.assertTrue(next(b for b in app.button if b.key == "mgood:ENDPOINTS.PRIMARY/PE1").disabled)
+        self.assertTrue(next(b for b in app.button if b.key == "mflag:ENDPOINTS.PRIMARY/PE1").disabled)
+        self.assertFalse(next(b for b in app.button if b.key == "mgood:OBJECTIVES.PRIMARY/P1").disabled)
+        next(b for b in app.button if b.key == "mgood:OBJECTIVES.PRIMARY/P1").click().run()
+        self.assert_clean(app)
+        self.assertFalse(next(b for b in app.button if b.key == "mgood:ENDPOINTS.PRIMARY/PE1").disabled)
+        self.assertTrue(next(b for b in app.button if b.key == "mgood:ENDPOINTS.SECONDARY/SE1").disabled)  # a different objective
+
     def test_progress_indicator_replaces_sidebar_navigation(self):
         app = self.start()
         self.assertEqual(0, len(app.sidebar.radio))

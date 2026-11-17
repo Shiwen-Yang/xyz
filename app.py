@@ -519,38 +519,39 @@ def check_objective(workspace, ref):
 
 
 def memo_check(workspace):
-    items = svc.memo_items(workspace)
+    entries = svc.memo_sections(workspace)
+    items = [ref for _, ref, _ in entries]
     if not items:
         st.info("Nothing to check yet. Finish a section in the Review workspace first.")
         st.button("← Back to Review workspace", on_click=navigate, args=("Review workspace",))
         return False
     flagged = [r for r in items if r["flag"]]
     unchecked = [r for r in items if not r["checked"] and not r["flag"]]
-    st.caption("This is what the memo will say. Click Locate reference to see each statement's source in the PDF, then mark it Looks right, or flag a problem.")
+    st.caption("This is what the memo will say. Click Locate reference to see each statement's source in the PDF, then mark it Looks right, or flag a problem. "
+               "Confirm an objective before its endpoints unlock.")
     st.progress((len(items) - len(unchecked)) / len(items), text=f"{len(items) - len(unchecked)} of {len(items)} checked")
     with st.container(height=560):
-        for identifier, heading in svc.all_groups():
-            group = [r for r in items if r["group"] == identifier]
-            if not group:
-                continue
-            st.markdown("#### " + heading)
-            for ref in group:
-                done = ref["checked"] or bool(ref["flag"])
-                if ref["flag"]:
-                    icon, status = "🚩", "Flagged (Notes Added)" if ref["flag"]["note"] else "Flagged"
-                elif ref["checked"]:
-                    icon, status = "✅", "Checked"
-                else:
-                    icon, status = None, "Not checked yet"
-                with st.expander(f"**{ref['name']}** · {status}", icon=icon, expanded=not done):
-                    st.write(ref["text"])
-                    if ref["flag"] and ref["flag"]["note"]:
-                        st.caption("Your note: " + ref["flag"]["note"])
-                    st.text_input("Note (optional)", key="flagnote:" + ref["key"], placeholder="What looks wrong? (optional)", label_visibility="collapsed")
-                    locate, good, flag = st.columns(3)
-                    locate.button("Locate reference", key="mlocate:" + ref["key"], on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True)
-                    good.button("Looks right", key="mgood:" + ref["key"], on_click=check_objective, args=(workspace, ref), use_container_width=True)
-                    flag.button("Flag a problem", key="mflag:" + ref["key"], on_click=flag_objective, args=(workspace, ref), use_container_width=True)
+        for heading, ref, locked in entries:
+            if heading:
+                st.markdown("#### " + heading)
+            done = ref["checked"] or bool(ref["flag"])
+            if ref["flag"]:
+                icon, status = "🚩", "Flagged (Notes Added)" if ref["flag"]["note"] else "Flagged"
+            elif ref["checked"]:
+                icon, status = "✅", "Checked"
+            else:
+                icon, status = None, "Not checked yet"
+            with st.expander(f"**{ref['name']}** · {status}", icon=icon, expanded=not done):
+                st.write(ref["text"])
+                if locked:
+                    st.info("Confirm its objective first.")
+                if ref["flag"] and ref["flag"]["note"]:
+                    st.caption("Your note: " + ref["flag"]["note"])
+                st.text_input("Note (optional)", key="flagnote:" + ref["key"], placeholder="What looks wrong? (optional)", label_visibility="collapsed")
+                locate, good, flag = st.columns(3)
+                locate.button("Locate reference", key="mlocate:" + ref["key"], on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True)
+                good.button("Looks right", key="mgood:" + ref["key"], on_click=check_objective, args=(workspace, ref), disabled=locked, use_container_width=True)
+                flag.button("Flag a problem", key="mflag:" + ref["key"], on_click=flag_objective, args=(workspace, ref), disabled=locked, use_container_width=True)
     sections = sa.catalog(workspace)["sections"]
     pending = [str(s["number"]) for s in sections if not (s["number"] in svc.LIST_SECTIONS and svc.section_done(workspace, s["number"]))]
     st.caption("Sections not reviewed in this app yet (shown as pending in the draft memo): " + ", ".join(pending) + ".")

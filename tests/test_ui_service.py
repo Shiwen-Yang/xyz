@@ -273,6 +273,31 @@ class UIServiceTests(unittest.TestCase):
         self.assertTrue(ui.unit_done(self.workspace))
         self.assertTrue(ui.all_sections_done(self.workspace))
 
+    def test_memo_sections_interleaves_objectives_with_their_endpoints_and_locks_until_checked(self):
+        for ref in ui.unit_items(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        ui.complete_unit(self.workspace)
+        entries = ui.memo_sections(self.workspace)
+        self.assertEqual({r["key"] for r in ui.memo_items(self.workspace)}, {ref["key"] for _, ref, _ in entries})
+        self.assertEqual(len(ui.memo_items(self.workspace)), len(entries))  # no item appears twice
+        keys = [ref["key"] for _, ref, _ in entries]
+        score = keys.index("OBJECTIVES.PRIMARY/O_SCORE")
+        score_endpoint = keys.index("ENDPOINTS.PRIMARY/SCORE")
+        response = keys.index("OBJECTIVES.PRIMARY/O_RESPONSE")
+        week24 = keys.index("OBJECTIVES.OTHER/O_WEEK24")
+        week24_endpoint = keys.index("ENDPOINTS.SECONDARY/WEEK24")
+        self.assertLess(score, score_endpoint)
+        self.assertLess(score_endpoint, response)  # each objective's endpoint(s) come right after it
+        self.assertLess(response, week24)  # primary objectives before secondary
+        self.assertLess(week24, week24_endpoint)
+        locked = {ref["key"]: locked for _, ref, locked in entries}
+        self.assertTrue(locked["ENDPOINTS.PRIMARY/SCORE"])  # its objective isn't checked yet
+        self.assertFalse(locked["OBJECTIVES.PRIMARY/O_SCORE"])
+        ui.mark_checked(self.workspace, "OBJECTIVES.PRIMARY/O_SCORE")
+        locked = {ref["key"]: locked for _, ref, locked in ui.memo_sections(self.workspace)}
+        self.assertFalse(locked["ENDPOINTS.PRIMARY/SCORE"])  # unlocked once its objective is checked
+        self.assertTrue(locked["ENDPOINTS.PRIMARY/RESPONSE"])  # a different objective's endpoint stays locked
+
     def test_memo_items_and_all_sections_done_span_every_list_section(self):
         self.assertFalse(ui.all_sections_done(self.workspace))
         for ref in ui.objective_references(self.workspace):

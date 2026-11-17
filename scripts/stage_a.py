@@ -657,6 +657,44 @@ def verification_report(workspace):
     return path
 
 
+def field_instance_order(state, field_id):
+    """Instance IDs for a field, in the order Elsa's response first introduced them — the same order
+    the review UI numbers them in (Primary Objective 1, 2, ...)."""
+    seen = []
+    for candidate in state["candidates"].values():
+        instance = candidate["record"]["instance_id"]
+        if candidate["field_id"] == field_id and instance != "none" and instance not in seen:
+            seen.append(instance)
+    return seen
+
+
+def endpoint_objective_groups(state):
+    """Approved, included endpoints grouped under their linked objective's numbered name, for the
+    Endpoints section: [(heading, [text, ...]), ...] as Primary Objective 1, 2, ..., then Secondary
+    Objective 1, 2, ..., each included only if it has at least one linked endpoint, followed by one
+    final "Other Endpoints (if applicable)" group for endpoints not linked to one specific objective
+    (only if non-empty)."""
+    links = state.get("ui_objective_links", {})
+    groups, unlinked = [], []
+    for endpoint_field, objective_field, tier in (("ENDPOINTS.PRIMARY", "OBJECTIVES.PRIMARY", "Primary"),
+                                                   ("ENDPOINTS.SECONDARY", "OBJECTIVES.OTHER", "Secondary")):
+        objectives = field_instance_order(state, objective_field)
+        texts = {instance: [] for instance in objectives}
+        for reviewed_key, reviewed in state["reviewed"].items():
+            if not reviewed_key.startswith(endpoint_field + "/") or not reviewed["include"]:
+                continue
+            candidate = state["candidates"].get(reviewed["candidate_id"])
+            record = candidate["record"] if candidate else {}
+            link = links.get(reviewed_key, record.get("objective_ref"))
+            (texts[link] if link in texts else unlinked).append(escape(reviewed["text"]))
+        for number, instance in enumerate(objectives, 1):
+            if texts[instance]:
+                groups.append((f"{tier} Objective {number}", texts[instance]))
+    if unlinked:
+        groups.append(("Other Endpoints (if applicable)", unlinked))
+    return groups
+
+
 def assemble(workspace):
     state = load(workspace)
     config = read_json(workspace / "review.json")
@@ -693,6 +731,16 @@ def assemble(workspace):
                     lines.extend(f"{number}. {text}" for number, (_, text) in enumerate(values, 1))
                     lines.append("")
                 sections.append("\n".join(lines).strip())
+            continue
+        if section["number"] == 5:
+            lines = ["# " + section["title"], ""]
+            for heading, texts in endpoint_objective_groups(state):
+                lines.extend(["## " + heading, ""])
+                lines.extend(f"{number}. {text}" for number, text in enumerate(texts, 1))
+                lines.append("")
+            if len(lines) == 2:
+                lines.extend(["Omitted by reviewer-approved disposition.", ""])
+            sections.append("\n".join(lines).strip())
             continue
         lines = ["# " + section["title"], ""]
         if section["number"] in {7, 8}:

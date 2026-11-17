@@ -241,6 +241,28 @@ class StageATests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing requested instances"):
             self.import_payload(payload)
 
+    def test_endpoints_section_is_grouped_by_linked_objective(self):
+        manifest = self.prepare()
+        payload = sample_response(manifest)
+        payload["fields"]["ENDPOINTS.PRIMARY"][0]["objective_ref"] = "O1"  # SCORE -> the one primary objective
+        payload["fields"]["ENDPOINTS.SECONDARY"][0]["objective_ref"] = "O2"  # WEEK24 -> the secondary objective
+        # RESPONSE is left without objective_ref: it falls into "Other Endpoints".
+        self.import_payload(payload)
+        self.accept_candidates()
+        _, body, _ = sa.assemble(self.workspace)
+        endpoints = body.split("# Endpoints:", 1)[1].split("\n# ", 1)[0]
+        self.assertIn("## Primary Objective 1", endpoints)
+        self.assertIn("## Secondary Objective 1", endpoints)
+        self.assertIn("## Other Endpoints (if applicable)", endpoints)
+        self.assertNotIn("## Primary Objective 2", endpoints)  # there is only one primary objective here
+        primary, secondary, other = (endpoints.index("## " + h) for h in
+                                     ("Primary Objective 1", "Secondary Objective 1", "Other Endpoints"))
+        self.assertLess(primary, secondary)
+        self.assertLess(secondary, other)
+        self.assertIn("for SCORE", endpoints[primary:secondary])
+        self.assertIn("for WEEK24", endpoints[secondary:other])
+        self.assertIn("for RESPONSE", endpoints[other:])
+
     def test_dependency_inventory_required_before_analysis(self):
         with self.assertRaisesRegex(ValueError, "definitions/inventory first"):
             self.prepare("7")

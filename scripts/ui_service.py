@@ -536,6 +536,35 @@ def memo_items(workspace):
     return [r for r in items if r["included"]]
 
 
+def memo_sections(workspace):
+    """(heading_or_None, ref, locked) for the Export check, in confirmation order: each objective
+    immediately followed by its linked endpoints (locked until that objective is checked), then any
+    objective with none, then other/exploratory objectives, then endpoints linked to nothing (or to
+    an objective that isn't itself part of the memo)."""
+    included = {r["key"] for r in memo_items(workspace)}
+    entries = []
+    other_endpoints = []
+    for tier_heading, objective_group, endpoint_group in (
+            ("Primary Objectives and Endpoints", "OBJECTIVES.PRIMARY", "ENDPOINTS.PRIMARY"),
+            ("Secondary Objectives and Endpoints", "OBJECTIVES.OTHER", "ENDPOINTS.SECONDARY")):
+        objectives = [r for r in objective_references(workspace) if r["group"] == objective_group
+                      and r["instance"] != "none" and r["key"] in included]
+        endpoints = [r for r in endpoint_references(workspace) if r["group"] == endpoint_group and r["key"] in included]
+        linked_instances = {r["instance"] for r in objectives}
+        for index, objective in enumerate(objectives):
+            entries.append((tier_heading if index == 0 else None, objective, False))
+            for endpoint in endpoints:
+                if endpoint_link(workspace, endpoint) == objective["instance"]:
+                    entries.append((None, endpoint, not objective["checked"]))
+        other_endpoints += [r for r in endpoints if endpoint_link(workspace, r) not in linked_instances]
+    exploratory = [r for r in objective_references(workspace) if r["group"] == "OBJECTIVES.EXPLORATORY" and r["key"] in included]
+    for index, ref in enumerate(exploratory):
+        entries.append(("Other objectives (exploratory, etc.)" if index == 0 else None, ref, False))
+    for index, ref in enumerate(other_endpoints):
+        entries.append(("Other Endpoints (if applicable)" if index == 0 else None, ref, False))
+    return entries
+
+
 def content_hash(workspace):
     return sa.object_hash([(r["key"], r["text"]) for r in memo_items(workspace)])
 
