@@ -18,6 +18,7 @@ ANCHOR = 24            # characters used to anchor the start and end of a passag
 LINE_GAP = 0.8         # lines closer than this many line-heights belong to one block
 
 EXACT, PARTIAL, OTHER_PAGE, NOT_FOUND, UNAVAILABLE = "exact", "partial", "other_page", "not_found", "unavailable"
+CONTINUES = "continues"  # one passage running over a page break
 
 
 def normalize(text):
@@ -114,6 +115,34 @@ def _search_page(page, wanted):
     return rects, marks, 1.0 if exact else max(0.5, (end - start) / len(wanted) * 0.99)
 
 
+def _search_across(document, first_page, wanted):
+    """Look for a passage that starts on 1-based ``first_page`` and ends on the next page, ignoring any
+    running header, footer or page number between the two halves. Returns parts [dict(page, rects, marks)]
+    or None."""
+    if not 1 <= first_page < document.page_count:
+        return None
+    streams, owner, words, page_of = [], [], [], []
+    for number in (first_page, first_page + 1):
+        stream, own, page_words = _page_words(document[number - 1])
+        base = len(words)
+        owner.extend(i + base for i in own)
+        words.extend(page_words)
+        page_of.extend([number] * len(page_words))
+        streams.append(stream)
+    found = _find_span("".join(streams), wanted)
+    if not found:
+        return None
+    start, end, _ = found
+    first, last = owner[start], owner[end - 1]
+    if page_of[first] == page_of[last]:
+        return None  # not actually a continuation; the single-page search owns this case
+    boundary = page_of.index(first_page + 1)
+    head, head_marks = _span_rects(words, first, boundary - 1)
+    tail, tail_marks = _span_rects(words, boundary, last)
+    return [dict(page=first_page, rects=head, marks=head_marks[:1]),
+            dict(page=first_page + 1, rects=tail, marks=tail_marks[-1:])]
+
+
 def locate(path, page_number, excerpt):
     """Locate ``excerpt`` near PDF page ``page_number``.
 
@@ -140,6 +169,10 @@ def locate(path, page_number, excerpt):
             rects, marks, coverage = _search_page(document[cited - 1], wanted)
             if rects and coverage == 1.0:
                 return dict(status=EXACT, page=cited, rects=rects, marks=marks)
+            for first_page in (cited - 1, cited):  # the passage may start on the cited page or end on it
+                parts = _search_across(document, first_page, wanted)
+                if parts:
+                    return dict(status=CONTINUES, page=parts[0]["page"], rects=parts[0]["rects"], marks=parts[0]["marks"], parts=parts)
             partial = None
             if rects:
                 partial = dict(status=PARTIAL, page=cited, rects=rects, marks=marks)
@@ -165,4 +198,5 @@ LABELS = {EXACT: "Excerpt found on the cited page",
           PARTIAL: "Only part of the excerpt was found on the cited page",
           OTHER_PAGE: "Excerpt found on a different page than cited",
           NOT_FOUND: "Excerpt not found in the PDF text (check the page by eye)",
+          CONTINUES: "Passage continues across a page break",
           UNAVAILABLE: "Not checked"}

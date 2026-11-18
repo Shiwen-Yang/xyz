@@ -162,10 +162,11 @@ document.getElementById('b').onclick = async () => {
 def focus_reference(version_key, path, page, excerpt):
     """Button callback: aim the PDF panel at a cited passage and highlight it."""
     found = locate_excerpt(path, svc_sha(path), page, excerpt) if path else dict(status="unavailable", page=page, rects=[])
-    shown = found["page"] if found["status"] in ("exact", "partial", "other_page") else (page or 1)
+    shown = found["page"] if found["status"] in ("exact", "partial", "other_page", "continues") else (page or 1)
     st.session_state["source_version"] = version_key
     st.session_state["pdf_page"] = shown
-    st.session_state["highlight"] = dict(page=shown, rects=found["rects"], marks=found.get("marks", []), status=found["status"])
+    st.session_state["highlight"] = dict(page=shown, rects=found["rects"], marks=found.get("marks", []), status=found["status"],
+                                           parts=found.get("parts") or [dict(page=shown, rects=found["rects"], marks=found.get("marks", []))])
 
 
 def svc_sha(path):
@@ -200,16 +201,19 @@ def pdf_panel(workspace):
     page = st.number_input("PDF page position", min_value=1, max_value=maximum, key="pdf_page")
     full = st.checkbox("Show full document", key="full_pdf")
     highlight = st.session_state.get("highlight") or {}
-    annotations = ([dict(page=highlight["page"], color="#e6a700", border="solid", **r) for r in highlight.get("rects", [])]
-                   + [dict(page=highlight["page"], color="#d62728", border="solid", **r) for r in highlight.get("marks", [])]) \
-        if highlight.get("page") else []
+    parts = highlight.get("parts") or []
+    annotations = [dict(page=part["page"], color="#e6a700", border="solid", **r) for part in parts for r in part["rects"]] \
+        + [dict(page=part["page"], color="#d62728", border="solid", **r) for part in parts for r in part["marks"]]
+    shown_pages = sorted({part["page"] for part in parts if part["page"] and part["rects"]}) if highlight.get("status") == "continues" else []
     if highlight.get("status") == "not_found" and highlight.get("page") == page:
         st.warning("The cited excerpt was not found in this page's text, so nothing is highlighted. Read the page directly.")
+    elif highlight.get("status") == "continues" and page in shown_pages:
+        st.info(f"This passage continues across a page break: it runs from page {shown_pages[0]} to page {shown_pages[-1]}. Both pages are shown.")
     elif highlight.get("status") == "other_page" and highlight.get("page") == page:
         st.info("This passage was found here, on a different page than Elsa cited.")
     pdf_viewer(path.read_bytes(), height=720,
                key="pdf:" + workspace.name + source_id + source["sha256"][:12] + (":full" if full else ":" + str(page)) + ":" + str(len(annotations)) + str(highlight.get("page")),
-               pages_to_render=[] if full else [page], annotations=annotations, annotation_outline_size=3,
+               pages_to_render=[] if full else (shown_pages if page in shown_pages else [page]), annotations=annotations, annotation_outline_size=3,
                scroll_to_page=page if full else None, render_text=True, zoom_level="auto")
     st.download_button("Download source PDF", path.read_bytes(), file_name=source["filename"], mime="application/pdf")
 
@@ -367,7 +371,7 @@ def locate_label(ref):
     return "Locate reference" + (f" ({len(ref['sources'])})" if len(ref["sources"]) > 1 else "")
 
 
-MARKS = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
+MARKS = {"exact": "✅", "continues": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
 
 
 def cited_passages(ref):

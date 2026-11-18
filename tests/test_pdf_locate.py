@@ -52,6 +52,20 @@ class LocateTests(unittest.TestCase):
         self.assertEqual("partial", found["status"])
         self.assertEqual(1, len(found["rects"]))
 
+    def test_passage_split_by_a_page_break_is_found_on_both_pages(self):
+        import pymupdf
+        path = Path(tempfile.mkdtemp()) / "two.pdf"
+        document = pymupdf.open()
+        document.new_page().insert_textbox(pymupdf.Rect(72, 72, 300, 200), "The primary endpoint is the proportion of subjects with confirmed disease within", fontsize=11)
+        document.new_page().insert_textbox(pymupdf.Rect(72, 72, 300, 200), "Protocol XYZ Page 8\nthe first 28 days after the second dose, measured by laboratory test.", fontsize=11)
+        document.save(str(path))
+        excerpt = "The primary endpoint is the proportion of subjects with confirmed disease within the first 28 days after the second dose, measured by laboratory test."
+        for cited in (1, 2):
+            found = pdf_locate.locate(path, cited, excerpt)
+            self.assertEqual("continues", found["status"])
+            self.assertEqual([1, 2], [part["page"] for part in found["parts"]])
+            self.assertTrue(all(part["rects"] and part["marks"] for part in found["parts"]))
+
 
 if __name__ == "__main__":
     unittest.main()
