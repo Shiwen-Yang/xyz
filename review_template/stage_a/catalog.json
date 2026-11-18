@@ -259,11 +259,22 @@
         {
           "id": "ENDPOINTS.SECONDARY",
           "label": "Secondary",
-          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. Also set objective_ref to the id of the secondary or other (for example exploratory) objective entity (declared in OBJECTIVES.OTHER or OBJECTIVES.EXPLORATORY in this same response) that this endpoint serves, or null if it does not correspond to one specific objective.",
+          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. Also set objective_ref to the id of the secondary objective entity (declared in OBJECTIVES.OTHER in this same response) that this endpoint serves, or null if it does not correspond to one specific secondary objective.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",
           "scope": "secondary_endpoint",
+          "discovers_entities": true,
+          "source_scope": "protocol"
+        },
+        {
+          "id": "ENDPOINTS.OTHER",
+          "label": "Other endpoints (exploratory, etc.)",
+          "instructions": "Extract every other stated endpoint that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic endpoints) verbatim, retaining the sponsor's label. Do not repeat primary or secondary endpoints. If the protocol states none, return one not_found record with instance_id none. Also set objective_ref to the id of the other objective entity (declared in OBJECTIVES.EXPLORATORY in this same response) that this endpoint serves, or null if it does not correspond to one specific other objective.",
+          "depth": 0,
+          "group": false,
+          "mode": "verbatim",
+          "scope": "other_endpoint",
           "discovers_entities": true,
           "source_scope": "protocol"
         }

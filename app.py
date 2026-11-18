@@ -443,8 +443,8 @@ def step_references(workspace):
     objective_noun = svc.LIST_SECTIONS[svc.OBJECTIVES_SECTION]["noun"]
     endpoint_noun = svc.LIST_SECTIONS[svc.ENDPOINTS_SECTION]["noun"]
     for tier, endpoint_group in (((("OBJECTIVES.PRIMARY", "Primary objectives"),), "ENDPOINTS.PRIMARY"),
-                                 ((("OBJECTIVES.OTHER", "Secondary objectives"),
-                                   ("OBJECTIVES.EXPLORATORY", "Other objectives (exploratory, etc.)")), "ENDPOINTS.SECONDARY")):
+                                 ((("OBJECTIVES.OTHER", "Secondary objectives"),), "ENDPOINTS.SECONDARY"),
+                                 ((("OBJECTIVES.EXPLORATORY", "Other objectives (exploratory, etc.)"),), "ENDPOINTS.OTHER")):
         none_found = [r for r in endpoints if r["group"] == endpoint_group and r["instance"] == "none"]
         subgroups = iter(svc.endpoint_subgroups(workspace, endpoint_group)) if not none_found else iter(())
         for n, (objective_group, heading) in enumerate(tier):

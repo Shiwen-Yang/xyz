@@ -14,7 +14,7 @@ Randomization is 1:1:1, stratified by region (North/South). Subjects, investigat
 
 ## 3. Endpoints and hypotheses
 
-Primary endpoint SCORE is baseline-to-week-12 change in Q score, calculated as week-12 score minus baseline score; higher scores are better. Primary endpoint RESPONSE is an increase of at least 5 Q-score points from baseline at week 12. The secondary endpoint is baseline-to-week-24 change in Q score.
+Primary endpoint SCORE is baseline-to-week-12 change in Q score, calculated as week-12 score minus baseline score; higher scores are better. Primary endpoint RESPONSE is an increase of at least 5 Q-score points from baseline at week 12. The secondary endpoint is baseline-to-week-24 change in Q score. An exploratory endpoint is baseline-to-week-4 change in Q score.
 
 For each active dose versus placebo, the score hypothesis is H0: mean change difference = 0 versus H1: mean change difference is not 0. The response hypothesis is H0: response-probability difference = 0 versus H1: response-probability difference is not 0. Differences are active minus placebo. There is no non-inferiority or equivalence margin. Four co-primary comparisons (two doses by two endpoints) are each tested at two-sided alpha 0.0125 using Bonferroni allocation from family alpha 0.05. Both endpoint tests must be significant for a dose to succeed. Week-24 analyses are exploratory without a confirmatory alpha allocation.
 

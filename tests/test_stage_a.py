@@ -32,6 +32,7 @@ ENTITIES = {
     "experimental_arm": [dict(id="LOW", kind="experimental_arm", label="Low dose"),
                          dict(id="HIGH", kind="experimental_arm", label="High dose")],
     "control_arm": [dict(id="PLACEBO", kind="control_arm", label="Placebo")],
+    "other_endpoint": [],
     "interim_look": [],
 }
 
@@ -299,7 +300,7 @@ class StageATests(unittest.TestCase):
         quiet(demo_stage_a.create, destination)
         state = sa.load(destination)
         self.assertEqual({}, state["reviewed"])
-        self.assertEqual(17, len(state["candidates"]))
+        self.assertEqual(18, len(state["candidates"]))
         text = " ".join((destination / "inputs/protocol.md").read_text().split())
         for candidate in state["candidates"].values():
             for source in candidate["record"]["sources"]:

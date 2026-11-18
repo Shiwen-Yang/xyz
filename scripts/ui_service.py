@@ -35,9 +35,10 @@ LIST_SECTIONS = {
     ),
     ENDPOINTS_SECTION: dict(
         batch=0,
-        fields="ENDPOINTS.PRIMARY,ENDPOINTS.SECONDARY",
-        groups=[("ENDPOINTS.PRIMARY", "Primary endpoints"), ("ENDPOINTS.SECONDARY", "Secondary endpoints")],
-        names={"ENDPOINTS.PRIMARY": "Primary Endpoint", "ENDPOINTS.SECONDARY": "Secondary Endpoint"},
+        fields="ENDPOINTS.PRIMARY,ENDPOINTS.SECONDARY,ENDPOINTS.OTHER",
+        groups=[("ENDPOINTS.PRIMARY", "Primary endpoints"), ("ENDPOINTS.SECONDARY", "Secondary endpoints"),
+                ("ENDPOINTS.OTHER", "Other endpoints (exploratory, etc.)")],
+        names={"ENDPOINTS.PRIMARY": "Primary Endpoint", "ENDPOINTS.SECONDARY": "Secondary Endpoint", "ENDPOINTS.OTHER": "Other Endpoint"},
         noun="endpoint",
     ),
 }
@@ -47,12 +48,12 @@ LIST_SECTIONS = {
 UNIT_TITLE = "Objectives and Endpoints"
 UNIT_FIELDS = LIST_SECTIONS[OBJECTIVES_SECTION]["fields"] + "," + LIST_SECTIONS[ENDPOINTS_SECTION]["fields"]
 UNIT_PROMPT_CAPTION = ("Asks Elsa for every primary, secondary and other (for example exploratory) objective, and every "
-                      "primary and secondary endpoint, each quoted word for word with its source page and sorted by the "
+                      "primary, secondary and other endpoint, each quoted word for word with its source page and sorted by the "
                       "sponsor's own label. Each endpoint also says which objective it corresponds to, if any.")
 # Endpoint group identifier -> the objective groups its items can be linked to, in display order.
-# Secondary endpoints may also serve an "other" (exploratory, etc.) objective.
 ENDPOINT_OBJECTIVE_GROUPS = {"ENDPOINTS.PRIMARY": ("OBJECTIVES.PRIMARY",),
-                             "ENDPOINTS.SECONDARY": ("OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY")}
+                             "ENDPOINTS.SECONDARY": ("OBJECTIVES.OTHER",),
+                             "ENDPOINTS.OTHER": ("OBJECTIVES.EXPLORATORY",)}
 NOT_LINKED = ""  # sentinel: "not linked to a specific objective"
 _LOCK = threading.RLock()
 
@@ -204,10 +205,10 @@ def unit_request(workspace):
 
 def _ensure_other_objectives_field(workspace):
     state = sa.load(workspace)
-    if "OBJECTIVES.EXPLORATORY" not in sa.fields(workspace):
-        # Reviews made before "other objectives" existed: refresh the field list only if nothing is approved yet.
+    if not {"OBJECTIVES.EXPLORATORY", "ENDPOINTS.OTHER"} <= set(sa.fields(workspace)):
+        # Reviews made before "other objectives/endpoints" existed: refresh the field list only if nothing is approved yet.
         if state["reviewed"]:
-            raise ValueError("This review was created before other (exploratory) objectives were added and already has approved answers. Start a new review to extract them.")
+            raise ValueError("This review was created before other (exploratory) objectives and endpoints were added and already has approved answers. Start a new review to extract them.")
         shutil.copyfile(sa.ASSETS / "catalog.json", workspace / "stage_a/catalog.json")
 
 
@@ -548,7 +549,8 @@ def memo_sections(workspace):
     other_endpoints = []
     for tier_heading, objective_groups, endpoint_group in (
             ("Primary Objectives and Endpoints", ("OBJECTIVES.PRIMARY",), "ENDPOINTS.PRIMARY"),
-            ("Secondary and Other Objectives and Endpoints", ("OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY"), "ENDPOINTS.SECONDARY")):
+            ("Secondary Objectives and Endpoints", ("OBJECTIVES.OTHER",), "ENDPOINTS.SECONDARY"),
+            ("Other Objectives and Endpoints", ("OBJECTIVES.EXPLORATORY",), "ENDPOINTS.OTHER")):
         objectives = [r for r in objective_references(workspace) if r["group"] in objective_groups
                       and r["instance"] != "none" and r["key"] in included]
         endpoints = [r for r in endpoint_references(workspace) if r["group"] == endpoint_group and r["key"] in included]

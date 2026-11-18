@@ -47,6 +47,7 @@ Verbatim text is preserved in provenance. You may accept edited report wording w
 | --- | --- | --- | --- |
 | ENDPOINTS.PRIMARY | verbatim | primary_endpoint | Extract each primary endpoint's complete definition verbatim, including time windows, event/response definitions, and derivation rules wherever specified. Exclude secondary endpoints. |
 | ENDPOINTS.SECONDARY | verbatim | secondary_endpoint | Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. |
+| ENDPOINTS.OTHER | verbatim | other_endpoint | Extract every other stated endpoint that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic endpoints) verbatim, retaining the sponsor's label. Do not repeat primary or secondary endpoints. If the protocol states none, return one not_found record with instance_id none. |
 
 ## Statistical Hypothesis:
 

@@ -178,6 +178,13 @@
         "instructions": "Define relevant secondary/key secondary endpoints in detail (e.g. immunological response, overall survival, pain score), preserving their priority as stated.",
         "depth": 0,
         "group": false
+      },
+      {
+        "id": "ENDPOINTS.OTHER",
+        "label": "Other endpoints (exploratory, etc.)",
+        "instructions": "Other sponsor-stated endpoints that are neither primary nor secondary, such as exploratory endpoints. Record them for completeness; include in the memo only if relevant.",
+        "depth": 0,
+        "group": false
       }
     ],
     "prose": false

@@ -17,7 +17,7 @@ ASSETS = ROOT / "review_template/stage_a"
 ID = r"^[A-Za-z][A-Za-z0-9_-]{0,63}$"
 STATUSES = ["found", "not_found", "not_applicable", "conflicting", "unreadable"]
 KINDS = ["primary_objective", "secondary_objective", "other_objective", "primary_endpoint", "secondary_endpoint",
-         "experimental_arm", "control_arm", "interim_look"]
+         "other_endpoint", "experimental_arm", "control_arm", "interim_look"]
 DISPOSITIONS = {"not_found": "Not located in supplied sources.",
                 "not_applicable": "Not applicable.", "conflicting": "Conflicting source statements; reviewer disposition required.",
                 "unreadable": "Source material could not be read; reviewer disposition required."}
@@ -673,16 +673,15 @@ def field_instance_order(state, field_id):
 def endpoint_objective_groups(state):
     """Approved, included endpoints grouped under their linked objective's numbered name, for the
     Endpoints section: [(heading, [text, ...]), ...] as Primary Objective 1, 2, ..., then Secondary
-    Objective 1, 2, ..., each included only if it has at least one linked endpoint, followed by one
+    Objective 1, 2, ..., then Other Objective 1, 2, ..., each included only if it has at least one linked endpoint, followed by one
     final "Other Endpoints (if applicable)" group for endpoints not linked to one specific objective
     (only if non-empty)."""
     links = state.get("ui_objective_links", {})
     groups, unlinked = [], []
-    for endpoint_field, objective_fields in (("ENDPOINTS.PRIMARY", (("OBJECTIVES.PRIMARY", "Primary"),)),
-                                              ("ENDPOINTS.SECONDARY", (("OBJECTIVES.OTHER", "Secondary"),
-                                                                       ("OBJECTIVES.EXPLORATORY", "Other")))):
-        objectives = [(instance, tier, number) for objective_field, tier in objective_fields
-                      for number, instance in enumerate(field_instance_order(state, objective_field), 1)]
+    for endpoint_field, objective_field, tier in (("ENDPOINTS.PRIMARY", "OBJECTIVES.PRIMARY", "Primary"),
+                                                   ("ENDPOINTS.SECONDARY", "OBJECTIVES.OTHER", "Secondary"),
+                                                   ("ENDPOINTS.OTHER", "OBJECTIVES.EXPLORATORY", "Other")):
+        objectives = [(instance, tier, number) for number, instance in enumerate(field_instance_order(state, objective_field), 1)]
         texts = {instance: [] for instance, _, _ in objectives}
         for reviewed_key, reviewed in state["reviewed"].items():
             if not reviewed_key.startswith(endpoint_field + "/") or not reviewed["include"]:

@@ -53,6 +53,11 @@
       "id": "O_WEEK4",
       "kind": "other_objective",
       "label": "Exploratory objective: week-4 Q score"
+    },
+    {
+      "id": "OTHER_LOOK",
+      "kind": "other_endpoint",
+      "label": "Exploratory week-4 change in Q score"
     }
   ],
   "fields": {
@@ -340,6 +345,24 @@
           }
         ],
         "explanation": ""
+      }
+    ],
+    "ENDPOINTS.OTHER": [
+      {
+        "instance_id": "OTHER_LOOK",
+        "status": "found",
+        "value": "An exploratory endpoint is baseline-to-week-4 change in Q score.",
+        "sources": [
+          {
+            "document_id": "PROTOCOL",
+            "pdf_page": null,
+            "printed_page": null,
+            "section": "3. Endpoints and hypotheses",
+            "exact_excerpt": "An exploratory endpoint is baseline-to-week-4 change in Q score."
+          }
+        ],
+        "explanation": "",
+        "objective_ref": "O_WEEK4"
       }
     ]
   }

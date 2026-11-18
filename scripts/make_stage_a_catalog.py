@@ -25,6 +25,7 @@ GUIDANCE = {
     "DESIGN.OTHER": "Summarize explicitly stated additional design features such as manufacturing delays or lot-consistency requirements. Do not evaluate adequacy or identify deficiencies.",
     "ENDPOINTS.PRIMARY": "Extract each primary endpoint's complete definition verbatim, including time windows, event/response definitions, and derivation rules wherever specified. Exclude secondary endpoints.",
     "ENDPOINTS.SECONDARY": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important.",
+    "ENDPOINTS.OTHER": "Extract every other stated endpoint that the sponsor does not label primary or secondary (for example exploratory, tertiary, safety or pharmacokinetic endpoints) verbatim, retaining the sponsor's label. Do not repeat primary or secondary endpoints. If the protocol states none, return one not_found record with instance_id none.",
     "HYPOTHESIS.STATEMENT": "Quote formal hypotheses and parameter definitions for the named primary endpoint. Retain comparison direction and named arms. Do not construct a hypothesis if none is stated.",
     "HYPOTHESIS.MARGIN": "Quote applicable non-inferiority/equivalence margins and the sponsor's stated justification for the named primary endpoint. Do not evaluate the justification.",
     "HYPOTHESIS.SUCCESS": "Quote the sponsor's success criteria for the named primary endpoint and its role in overall study success, including joint requirements and testing order.",
@@ -64,11 +65,11 @@ for prefix in ("PRIMARY_ANALYSIS", "OTHER_ANALYSIS"):
 def generate():
     sections = json.loads((ROOT / "review_template/sections.json").read_text())
     sections = copy.deepcopy(sections)
-    verbatim = {"OBJECTIVES.PRIMARY", "OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY", "ENDPOINTS.PRIMARY", "ENDPOINTS.SECONDARY",
+    verbatim = {"OBJECTIVES.PRIMARY", "OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY", "ENDPOINTS.PRIMARY", "ENDPOINTS.SECONDARY", "ENDPOINTS.OTHER",
                 "DESIGN.ALLOCATION_RATIO", "HYPOTHESIS.STATEMENT", "HYPOTHESIS.MARGIN", "HYPOTHESIS.SUCCESS"}
     manual = {"EXECUTIVE.ASSESSMENT", "SAMPLE_SIZE.VERIFICATION", "OTHER.ISSUES", "TEAM.COMMENTS", "SPONSOR.COMMENTS"}
     scopes = {"OBJECTIVES.PRIMARY": "primary_objective", "OBJECTIVES.OTHER": "secondary_objective", "OBJECTIVES.EXPLORATORY": "other_objective",
-              "ENDPOINTS.PRIMARY": "primary_endpoint", "ENDPOINTS.SECONDARY": "secondary_endpoint",
+              "ENDPOINTS.PRIMARY": "primary_endpoint", "ENDPOINTS.SECONDARY": "secondary_endpoint", "ENDPOINTS.OTHER": "other_endpoint",
               "DESIGN.ARM.EXPERIMENTAL": "experimental_arm", "DESIGN.ARM.CONTROL": "control_arm",
               "INTERIM.METHOD": "interim_look", "INTERIM.TIMING": "interim_look", "INTERIM.OPERATING": "interim_look"}
     discovery = set(scopes) - {"INTERIM.TIMING", "INTERIM.OPERATING"}
