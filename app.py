@@ -361,6 +361,11 @@ def locate_next(ref):
     focus_reference(source["version_key"], source["path"], source["pdf_page"], source["exact_excerpt"])
 
 
+def locate_label(ref):
+    """Button caption; shows how many cited passages there are when more than one."""
+    return "Locate reference" + (f" ({len(ref['sources'])})" if len(ref["sources"]) > 1 else "")
+
+
 MARKS = {"exact": "✅", "partial": "⚠️", "other_page": "⚠️", "not_found": "❌", "unavailable": "▫️"}
 
 
@@ -414,7 +419,7 @@ def item_bulletin(workspace, ref, noun, endpoint_group=None):
         else:
             good, locate, reset = st.columns([1.4, 1.6, 0.6])
         good.button("Looks good", key="good:" + box, type="primary", on_click=looks_good, args=(workspace, ref), use_container_width=True)
-        locate.button("Locate reference", key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
+        locate.button(locate_label(ref), key="locate:" + box, on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True,
                       help=None if ref["sources"] else "Elsa cited no passage for this item.")
         reset.button("↻", key="reset:" + box, on_click=reset_objective, args=(workspace, ref), use_container_width=True,
                      help="Reset to Elsa's original text and clear any approval or flag")
@@ -563,7 +568,7 @@ def memo_check(workspace):
                     st.caption("Your note: " + ref["flag"]["note"])
                 st.text_input("Note (optional)", key="flagnote:" + ref["key"], placeholder="What looks wrong? (optional)", label_visibility="collapsed")
                 locate, good, flag = st.columns(3)
-                locate.button("Locate reference", key="mlocate:" + ref["key"], on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True)
+                locate.button(locate_label(ref), key="mlocate:" + ref["key"], on_click=locate_next, args=(ref,), disabled=not ref["sources"], use_container_width=True)
                 good.button("Looks right", key="mgood:" + ref["key"], on_click=check_objective, args=(workspace, ref), disabled=locked, use_container_width=True)
                 flag.button("Flag a problem", key="mflag:" + ref["key"], on_click=flag_objective, args=(workspace, ref), disabled=locked, use_container_width=True)
     sections = sa.catalog(workspace)["sections"]

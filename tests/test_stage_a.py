@@ -172,6 +172,24 @@ class StageATests(unittest.TestCase):
             self.assertEqual(before, (self.workspace / "stage_a/state.json").read_bytes())
             self.assertFalse((self.workspace / "stage_a/imports").exists())
 
+    def test_differing_versions_are_listed_in_one_value_divided_by_underscores(self):
+        manifest = self.prepare()
+        good = sample_response(manifest)
+        record = good["fields"]["OBJECTIVES.PRIMARY"][0]
+        first = copy.deepcopy(record["sources"][0])
+        second = copy.deepcopy(first)
+        first["exact_excerpt"] = "Version in the synopsis."
+        second["exact_excerpt"] = "Version in the objectives section."
+        record["sources"] = [first, second]
+        record["value"] = "Version in the synopsis.\n_______________\nVersion in the objectives section."
+        self.import_payload(copy.deepcopy(good))
+        for bad_value in ("Version in the synopsis.\n_______________\nA version nobody quoted.",
+                          "Version in the synopsis.\n_______________\n"):
+            bad = copy.deepcopy(good)
+            bad["fields"]["OBJECTIVES.PRIMARY"][0]["value"] = bad_value
+            with self.assertRaises(ValueError):
+                self.import_payload(bad)
+
     def test_duplicate_keys_and_non_json_numbers_are_rejected(self):
         for text in ('{"request_id":"a","request_id":"b"}', '{"value":NaN}'):
             with self.assertRaises(ValueError):

@@ -167,7 +167,7 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Next →").click().run()
         pages = []
         for _ in range(3):
-            next(b for b in app.button if b.label == "Locate reference").click().run()
+            next(b for b in app.button if b.label == "Locate reference (2)").click().run()
             self.assert_clean(app)
             pages.append(json.loads(app.get("component_instance")[-1].proto.json_args)["pages_to_render"][0])
         self.assertEqual([1, 2, 1], pages)

@@ -18,6 +18,7 @@ ID = r"^[A-Za-z][A-Za-z0-9_-]{0,63}$"
 STATUSES = ["found", "not_found", "not_applicable", "conflicting", "unreadable"]
 KINDS = ["primary_objective", "secondary_objective", "other_objective", "primary_endpoint", "secondary_endpoint",
          "other_endpoint", "experimental_arm", "control_arm", "interim_look"]
+VERSION_SEPARATOR = re.compile(r"\s*_{10,}\s*")  # divides differing verbatim statements inside one value
 DISPOSITIONS = {"not_found": "Not located in supplied sources.",
                 "not_applicable": "Not applicable.", "conflicting": "Conflicting source statements; reviewer disposition required.",
                 "unreadable": "Source material could not be read; reviewer disposition required."}
@@ -375,9 +376,10 @@ def validate_response(payload, manifest):
                 if not isinstance(record["value"], str) or not record["value"].strip() or not record["sources"]:
                     raise ValueError(f"{identifier}: found requires nonempty text and evidence")
                 if spec["mode"] == "verbatim":
-                    quotation = " ".join(record["value"].split())
                     excerpts = " ".join(" ".join(s["exact_excerpt"].split()) for s in record["sources"])
-                    if quotation not in excerpts:
+                    # Differing statements of the same item are listed in one value, divided by a line of underscores.
+                    versions = [" ".join(part.split()) for part in VERSION_SEPARATOR.split(record["value"])]
+                    if not all(versions) or any(version not in excerpts for version in versions):
                         raise ValueError(f"{identifier}: verbatim value is not a whitespace-collapsed substring of its sources' "
                                          "exact_excerpt concatenated in order; check for hyphenation/wording differences between "
                                          "value and the excerpts, and remove any inserted connector words, brackets, or paraphrasing from value")
