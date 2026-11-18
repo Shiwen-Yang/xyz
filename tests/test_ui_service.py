@@ -53,7 +53,7 @@ class UIServiceTests(unittest.TestCase):
         run, created = ui.import_bytes(self.workspace, raw)
         self.assertFalse(created)
         self.assertIn(run, sa.load(self.workspace)["imports"])
-        self.assertEqual(17, len(sa.load(self.workspace)["candidates"]))
+        self.assertEqual(18, len(sa.load(self.workspace)["candidates"]))
         before = (self.workspace / "stage_a/state.json").read_bytes()
         with self.assertRaises(ValueError):
             ui.import_bytes(self.workspace, b'{"request_id": "unknown"}')
