@@ -317,8 +317,10 @@ def text_key(workspace, ref):
 
 
 def looks_good(workspace, ref):
+    box = text_key(workspace, ref)
     try:
-        svc.approve_item(workspace, ref["key"], st.session_state[text_key(workspace, ref)])
+        svc.approve_item(workspace, ref["key"], st.session_state[box])
+        st.session_state[box] = st.session_state[box].strip()  # what was approved: no stray edge whitespace
     except (ValueError, OSError) as exc:
         st.session_state["edit_error"] = svc.friendly_error(exc, workspace)
 
@@ -398,7 +400,7 @@ def item_bulletin(workspace, ref, noun, endpoint_group=None):
     which objective it corresponds to."""
     box = text_key(workspace, ref)
     st.session_state.setdefault(box, ref["text"])
-    unsaved = st.session_state[box] != ref["text"]
+    unsaved = st.session_state[box].strip() != ref["text"].strip()
     done = ref["approved"] and not ref["flag"] and not unsaved
     icon = "🚩 " if ref["flag"] else "🗑️ " if ref["removed"] else "✅ " if done else ""
     with st.expander(icon + ref["name"], expanded=not done):

@@ -191,6 +191,16 @@ class StreamlitTests(unittest.TestCase):
         self.assertNotIn("OBJECTIVES.PRIMARY/P1", sa.load(workspace)["reviewed"])
         self.assertEqual("Primary Objective(s):", self.box(app, workspace, "OBJECTIVES.PRIMARY/P1").value)
 
+    def test_trailing_whitespace_does_not_leave_unconfirmed_changes_warning(self):
+        app, workspace = self.workspace_with_pdf()
+        self.load_unit(app, workspace)
+        self.box(app, workspace, "OBJECTIVES.PRIMARY/P1").input("  Edited primary objective \n").run()
+        next(b for b in app.button if b.label == "Looks good").click().run()
+        self.assert_clean(app)
+        self.assertEqual("Edited primary objective", sa.load(workspace)["reviewed"]["OBJECTIVES.PRIMARY/P1"]["text"])
+        self.assertFalse(any("not confirmed" in c.value for c in app.caption))
+        self.assertEqual("Edited primary objective", self.box(app, workspace, "OBJECTIVES.PRIMARY/P1").value)
+
     def test_remove_button_reveals_reason_box_before_confirming(self):
         app, workspace = self.workspace_with_pdf()
         self.load_unit(app, workspace)
