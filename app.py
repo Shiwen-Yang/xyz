@@ -1,5 +1,6 @@
 """A local, guided workspace for statistical review memos."""
 from pathlib import Path
+import hashlib
 import json
 import shutil
 import sys
@@ -212,7 +213,7 @@ def pdf_panel(workspace):
     elif highlight.get("status") == "other_page" and highlight.get("page") == page:
         st.info("This passage was found here, on a different page than Elsa cited.")
     pdf_viewer(path.read_bytes(), height=720,
-               key="pdf:" + workspace.name + source_id + source["sha256"][:12] + (":full" if full else ":" + str(page)) + ":" + str(len(annotations)) + str(highlight.get("page")),
+               key="pdf:" + workspace.name + source_id + source["sha256"][:12] + (":full" if full else ":" + str(page)) + ":" + hashlib.sha1(json.dumps([annotations, shown_pages], sort_keys=True).encode()).hexdigest()[:12],
                pages_to_render=[] if full else (shown_pages if page in shown_pages else [page]), annotations=annotations, annotation_outline_size=3,
                scroll_to_page=page if full else None, render_text=True, zoom_level="auto")
     st.download_button("Download source PDF", path.read_bytes(), file_name=source["filename"], mime="application/pdf")
