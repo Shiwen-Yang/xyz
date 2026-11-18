@@ -49,8 +49,10 @@ UNIT_FIELDS = LIST_SECTIONS[OBJECTIVES_SECTION]["fields"] + "," + LIST_SECTIONS[
 UNIT_PROMPT_CAPTION = ("Asks Elsa for every primary, secondary and other (for example exploratory) objective, and every "
                       "primary and secondary endpoint, each quoted word for word with its source page and sorted by the "
                       "sponsor's own label. Each endpoint also says which objective it corresponds to, if any.")
-# Endpoint group identifier -> the objective group its items can be linked to.
-ENDPOINT_OBJECTIVE_GROUP = {"ENDPOINTS.PRIMARY": "OBJECTIVES.PRIMARY", "ENDPOINTS.SECONDARY": "OBJECTIVES.OTHER"}
+# Endpoint group identifier -> the objective groups its items can be linked to, in display order.
+# Secondary endpoints may also serve an "other" (exploratory, etc.) objective.
+ENDPOINT_OBJECTIVE_GROUPS = {"ENDPOINTS.PRIMARY": ("OBJECTIVES.PRIMARY",),
+                             "ENDPOINTS.SECONDARY": ("OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY")}
 NOT_LINKED = ""  # sentinel: "not linked to a specific objective"
 _LOCK = threading.RLock()
 
@@ -347,8 +349,8 @@ def find_reference(workspace, item_key):
 
 def objective_choices(workspace, endpoint_group):
     """(instance_id, display name) for the objectives one of this endpoint group's items can link to."""
-    objective_group = ENDPOINT_OBJECTIVE_GROUP[endpoint_group]
-    refs = [r for r in objective_references(workspace) if r["group"] == objective_group and r["instance"] != "none"]
+    objective_groups = ENDPOINT_OBJECTIVE_GROUPS[endpoint_group]
+    refs = [r for r in objective_references(workspace) if r["group"] in objective_groups and r["instance"] != "none"]
     return [(r["instance"], r["name"]) for r in refs]
 
 
@@ -544,10 +546,10 @@ def memo_sections(workspace):
     included = {r["key"] for r in memo_items(workspace)}
     entries = []
     other_endpoints = []
-    for tier_heading, objective_group, endpoint_group in (
-            ("Primary Objectives and Endpoints", "OBJECTIVES.PRIMARY", "ENDPOINTS.PRIMARY"),
-            ("Secondary Objectives and Endpoints", "OBJECTIVES.OTHER", "ENDPOINTS.SECONDARY")):
-        objectives = [r for r in objective_references(workspace) if r["group"] == objective_group
+    for tier_heading, objective_groups, endpoint_group in (
+            ("Primary Objectives and Endpoints", ("OBJECTIVES.PRIMARY",), "ENDPOINTS.PRIMARY"),
+            ("Secondary and Other Objectives and Endpoints", ("OBJECTIVES.OTHER", "OBJECTIVES.EXPLORATORY"), "ENDPOINTS.SECONDARY")):
+        objectives = [r for r in objective_references(workspace) if r["group"] in objective_groups
                       and r["instance"] != "none" and r["key"] in included]
         endpoints = [r for r in endpoint_references(workspace) if r["group"] == endpoint_group and r["key"] in included]
         linked_instances = {r["instance"] for r in objectives}
@@ -557,9 +559,6 @@ def memo_sections(workspace):
                 if endpoint_link(workspace, endpoint) == objective["instance"]:
                     entries.append((None, endpoint, not objective["checked"]))
         other_endpoints += [r for r in endpoints if endpoint_link(workspace, r) not in linked_instances]
-    exploratory = [r for r in objective_references(workspace) if r["group"] == "OBJECTIVES.EXPLORATORY" and r["key"] in included]
-    for index, ref in enumerate(exploratory):
-        entries.append(("Other objectives (exploratory, etc.)" if index == 0 else None, ref, False))
     for index, ref in enumerate(other_endpoints):
         entries.append(("Other Endpoints (if applicable)" if index == 0 else None, ref, False))
     return entries

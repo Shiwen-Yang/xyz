@@ -259,7 +259,7 @@
         {
           "id": "ENDPOINTS.SECONDARY",
           "label": "Secondary",
-          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. Also set objective_ref to the id of the secondary objective entity (declared in OBJECTIVES.OTHER in this same response) that this endpoint serves, or null if it does not correspond to one specific secondary objective.",
+          "instructions": "Extract all secondary/key secondary endpoint definitions verbatim, retaining sponsor priority labels. Do not omit endpoints because they seem less important. Also set objective_ref to the id of the secondary or other (for example exploratory) objective entity (declared in OBJECTIVES.OTHER or OBJECTIVES.EXPLORATORY in this same response) that this endpoint serves, or null if it does not correspond to one specific objective.",
           "depth": 0,
           "group": false,
           "mode": "verbatim",

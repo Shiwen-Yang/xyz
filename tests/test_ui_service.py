@@ -298,6 +298,21 @@ class UIServiceTests(unittest.TestCase):
         self.assertFalse(locked["ENDPOINTS.PRIMARY/SCORE"])  # unlocked once its objective is checked
         self.assertTrue(locked["ENDPOINTS.PRIMARY/RESPONSE"])  # a different objective's endpoint stays locked
 
+    def test_secondary_endpoint_can_link_to_an_other_objective(self):
+        names = dict(ui.objective_choices(self.workspace, "ENDPOINTS.SECONDARY"))
+        self.assertEqual({"O_WEEK24", "O_WEEK4"}, set(names))
+        self.assertEqual({"O_SCORE", "O_RESPONSE"}, {i for i, _ in ui.objective_choices(self.workspace, "ENDPOINTS.PRIMARY")})
+        ui.set_endpoint_link(self.workspace, "ENDPOINTS.SECONDARY/WEEK24", "O_WEEK4")
+        for ref in ui.unit_items(self.workspace):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        ui.complete_unit(self.workspace)
+        keys = [ref["key"] for _, ref, _ in ui.memo_sections(self.workspace)]
+        self.assertEqual(len(ui.memo_items(self.workspace)), len(keys))
+        self.assertEqual(keys.index("OBJECTIVES.EXPLORATORY/O_WEEK4") + 1, keys.index("ENDPOINTS.SECONDARY/WEEK24"))
+        groups = dict(sa.endpoint_objective_groups(sa.load(self.workspace)))
+        self.assertEqual(1, len(groups["Other Objective 1"]))
+        self.assertNotIn("Secondary Objective 1", groups)
+
     def test_memo_items_and_all_sections_done_span_every_list_section(self):
         self.assertFalse(ui.all_sections_done(self.workspace))
         for ref in ui.objective_references(self.workspace):

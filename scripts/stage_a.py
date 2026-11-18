@@ -678,10 +678,12 @@ def endpoint_objective_groups(state):
     (only if non-empty)."""
     links = state.get("ui_objective_links", {})
     groups, unlinked = [], []
-    for endpoint_field, objective_field, tier in (("ENDPOINTS.PRIMARY", "OBJECTIVES.PRIMARY", "Primary"),
-                                                   ("ENDPOINTS.SECONDARY", "OBJECTIVES.OTHER", "Secondary")):
-        objectives = field_instance_order(state, objective_field)
-        texts = {instance: [] for instance in objectives}
+    for endpoint_field, objective_fields in (("ENDPOINTS.PRIMARY", (("OBJECTIVES.PRIMARY", "Primary"),)),
+                                              ("ENDPOINTS.SECONDARY", (("OBJECTIVES.OTHER", "Secondary"),
+                                                                       ("OBJECTIVES.EXPLORATORY", "Other")))):
+        objectives = [(instance, tier, number) for objective_field, tier in objective_fields
+                      for number, instance in enumerate(field_instance_order(state, objective_field), 1)]
+        texts = {instance: [] for instance, _, _ in objectives}
         for reviewed_key, reviewed in state["reviewed"].items():
             if not reviewed_key.startswith(endpoint_field + "/") or not reviewed["include"]:
                 continue
@@ -689,7 +691,7 @@ def endpoint_objective_groups(state):
             record = candidate["record"] if candidate else {}
             link = links.get(reviewed_key, record.get("objective_ref"))
             (texts[link] if link in texts else unlinked).append(escape(reviewed["text"]))
-        for number, instance in enumerate(objectives, 1):
+        for instance, tier, number in objectives:
             if texts[instance]:
                 groups.append((f"{tier} Objective {number}", texts[instance]))
     if unlinked:
