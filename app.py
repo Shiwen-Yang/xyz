@@ -258,14 +258,19 @@ def stepper(workspace, name, steps, finish=None):
         forward.button(label, key=key + ":finish", type="primary", disabled=not can_finish(), on_click=on_finish, use_container_width=True)
 
 
-def step_prompt(workspace):
+def unit_suffix(unit):
+    """Widget-key suffix; the first unit keeps its original keys."""
+    return "" if unit == svc.OBJECTIVES_UNIT else ":" + unit
+
+
+def step_prompt(workspace, unit=svc.OBJECTIVES_UNIT):
     state = sa.load(workspace)
-    request_id = svc.unit_request(workspace)
-    st.caption(svc.UNIT_PROMPT_CAPTION)
+    request_id = svc.unit_request(workspace, unit)
+    st.caption(svc.UNITS[unit]["caption"])
     if not request_id:
-        if st.button("Prepare prompt", type="primary", key=f"prepare:{workspace.name}"):
+        if st.button("Prepare prompt", type="primary", key=f"prepare:{workspace.name}{unit_suffix(unit)}"):
             try:
-                svc.prepare_unit(workspace)
+                svc.prepare_unit(workspace, unit)
                 st.rerun()
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
@@ -286,14 +291,14 @@ def step_prompt(workspace):
     st.caption("When Elsa has answered, ask it to download the JSON, then click Next.")
 
 
-def step_response(workspace):
-    request_id = svc.unit_request(workspace)
+def step_response(workspace, unit=svc.OBJECTIVES_UNIT):
+    request_id = svc.unit_request(workspace, unit)
     filename = svc.elsa_filename(request_id)
     st.caption("The prompt asks Elsa to name its download `" + filename + "`.")
     folder_tab, upload_tab, paste_tab = st.tabs(["Downloads folder", "Upload file", "Paste JSON"])
     with folder_tab:
-        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key=f"folder:{workspace.name}")
-        if st.button("Load response from this folder", type="primary", key=f"loadfolder:{workspace.name}"):
+        folder = st.text_input("Folder where your browser saves downloads", value=svc.download_dir(workspace), key=f"folder:{workspace.name}{unit_suffix(unit)}")
+        if st.button("Load response from this folder", type="primary", key=f"loadfolder:{workspace.name}{unit_suffix(unit)}"):
             try:
                 found = svc.find_download(folder, request_id)
                 svc.remember_download_dir(workspace, folder)
@@ -301,14 +306,14 @@ def step_response(workspace):
             except (ValueError, OSError) as exc:
                 error(exc, workspace)
     with upload_tab:
-        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key=f"upload:{workspace.name}")
-        if st.button("Load uploaded file", disabled=uploaded is None, key=f"loadupload:{workspace.name}"):
+        uploaded = st.file_uploader("Elsa response JSON", type=["json"], key=f"upload:{workspace.name}{unit_suffix(unit)}")
+        if st.button("Load uploaded file", disabled=uploaded is None, key=f"loadupload:{workspace.name}{unit_suffix(unit)}"):
             load_response(workspace, uploaded.getvalue())
     with paste_tab:
-        pasted = st.text_area("Paste Elsa's JSON", height=140, key=f"paste:{workspace.name}")
-        if st.button("Load pasted JSON", disabled=not pasted.strip(), key=f"loadpaste:{workspace.name}"):
+        pasted = st.text_area("Paste Elsa's JSON", height=140, key=f"paste:{workspace.name}{unit_suffix(unit)}")
+        if st.button("Load pasted JSON", disabled=not pasted.strip(), key=f"loadpaste:{workspace.name}{unit_suffix(unit)}"):
             load_response(workspace, pasted.encode("utf-8"))
-    if svc.unit_items(workspace):
+    if svc.unit_items(workspace, unit):
         st.success("A response is loaded. Click Next to see the references.")
 
 
@@ -488,20 +493,47 @@ def step_references(workspace):
                 item_bulletin(workspace, endpoint_ref, endpoint_noun, endpoint_group=endpoint_group)
 
 
-def finish_unit(workspace):
+def finish_unit(workspace, unit=svc.OBJECTIVES_UNIT):
     try:
-        svc.complete_unit(workspace)
+        svc.complete_unit(workspace, unit)
     except (ValueError, OSError) as exc:
         st.session_state["edit_error"] = str(exc)
 
 
 def combined_section(workspace):
     """Objectives and Endpoints, reviewed together: one Elsa exchange, one combined check, one Finish."""
-    stepper(workspace, "objectives_endpoints", [
-        ("Prompt for Elsa", lambda: step_prompt(workspace), lambda: svc.unit_request(workspace) is not None),
-        ("Bring Elsa's response back", lambda: step_response(workspace), lambda: bool(svc.unit_items(workspace))),
+    unit = svc.OBJECTIVES_UNIT
+    stepper(workspace, unit, [
+        ("Prompt for Elsa", lambda: step_prompt(workspace, unit), lambda: svc.unit_request(workspace, unit) is not None),
+        ("Bring Elsa's response back", lambda: step_response(workspace, unit), lambda: bool(svc.unit_items(workspace, unit))),
         ("Check each item", lambda: step_references(workspace), lambda: False),
-    ], finish=("Finish this section ✓", lambda: svc.unit_ready(workspace), lambda: finish_unit(workspace)))
+    ], finish=("Finish this section ✓", lambda: svc.unit_ready(workspace, unit), lambda: finish_unit(workspace, unit)))
+
+
+def step_design_references(workspace):
+    st.caption("Check each item against the PDF (Locate reference), correct the wording if needed, then click Looks good. "
+               "A match only shows where the text was found; you still read and verify it. If something does not apply "
+               "(for example a comparator arm in a single-arm study), click Looks good to confirm it is omitted.")
+    noun = svc.LIST_SECTIONS[svc.DESIGN_SECTION]["noun"]
+    references = svc.list_references(workspace, svc.DESIGN_SECTION)
+    for group, heading in svc.LIST_SECTIONS[svc.DESIGN_SECTION]["groups"]:
+        items = [r for r in references if r["group"] == group]
+        if not items:
+            continue
+        if any(r["scope"] != "study" for r in items):  # arms: a heading over the numbered bulletins
+            st.markdown("#### " + heading)
+        for ref in items:
+            item_bulletin(workspace, ref, noun)
+
+
+def design_section(workspace):
+    """Design Features: its own Elsa exchange and one bulletin per extracted item."""
+    unit = svc.DESIGN_UNIT
+    stepper(workspace, unit, [
+        ("Prompt for Elsa", lambda: step_prompt(workspace, unit), lambda: svc.unit_request(workspace, unit) is not None),
+        ("Bring Elsa's response back", lambda: step_response(workspace, unit), lambda: bool(svc.unit_items(workspace, unit))),
+        ("Check each item", lambda: step_design_references(workspace), lambda: False),
+    ], finish=("Finish this section ✓", lambda: svc.unit_ready(workspace, unit), lambda: finish_unit(workspace, unit)))
 
 
 def review_workspace(workspace):
@@ -521,6 +553,11 @@ def review_workspace(workspace):
                     done = svc.unit_done(workspace)
                     with st.expander(("✅ " if done else "") + svc.UNIT_TITLE, expanded=not done):
                         combined_section(workspace)
+                    continue
+                if number == svc.DESIGN_SECTION:
+                    done = svc.unit_done(workspace, svc.DESIGN_UNIT)
+                    with st.expander(("✅ " if done else "") + f"{number}. {title}", expanded=not done):
+                        design_section(workspace)
                     continue
                 with st.expander(f"{number}. {title}"):
                     st.caption("Not available in this workspace yet.")

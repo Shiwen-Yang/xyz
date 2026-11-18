@@ -20,6 +20,7 @@ BATCHES = [("Objectives, design and endpoints", "3,4,5"),
            ("Background, interim plans and sample size", "2,9,10"),
            ("Factual executive summary", "1")]
 OBJECTIVES_SECTION = 3
+DESIGN_SECTION = 4
 ENDPOINTS_SECTION = 5
 # Sections built as a list of Elsa-extracted, per-item bulletins (locate/approve/flag/remove),
 # rather than the single free-text editable box used for every other section so far.
@@ -32,6 +33,25 @@ LIST_SECTIONS = {
         names={"OBJECTIVES.PRIMARY": "Primary Objective", "OBJECTIVES.OTHER": "Secondary Objective",
                "OBJECTIVES.EXPLORATORY": "Other Objective"},
         noun="objective",
+    ),
+    DESIGN_SECTION: dict(
+        batch=0,
+        fields=("DESIGN.POPULATION,DESIGN.RANDOMIZATION,DESIGN.ALLOCATION_RATIO,DESIGN.STRATA,DESIGN.BLINDING,"
+                "DESIGN.ARM.EXPERIMENTAL,DESIGN.ARM.CONTROL,DESIGN.SITES,DESIGN.OTHER"),
+        groups=[("DESIGN.POPULATION", "Study population"),
+                ("DESIGN.RANDOMIZATION", "Treatment allocation and randomization"),
+                ("DESIGN.ALLOCATION_RATIO", "Allocation ratio"),
+                ("DESIGN.STRATA", "Stratification factors"),
+                ("DESIGN.BLINDING", "Blinding"),
+                ("DESIGN.ARM.EXPERIMENTAL", "Experimental arms"),
+                ("DESIGN.ARM.CONTROL", "Control arms"),
+                ("DESIGN.SITES", "Site(s)"),
+                ("DESIGN.OTHER", "Other design features")],
+        names={"DESIGN.POPULATION": "Study Population", "DESIGN.RANDOMIZATION": "Allocation and Randomization",
+               "DESIGN.ALLOCATION_RATIO": "Allocation Ratio", "DESIGN.STRATA": "Stratification Factors",
+               "DESIGN.BLINDING": "Blinding", "DESIGN.ARM.EXPERIMENTAL": "Experimental Arm",
+               "DESIGN.ARM.CONTROL": "Control Arm", "DESIGN.SITES": "Site(s)", "DESIGN.OTHER": "Other Design Features"},
+        noun="design item",
     ),
     ENDPOINTS_SECTION: dict(
         batch=0,
@@ -50,6 +70,17 @@ UNIT_FIELDS = LIST_SECTIONS[OBJECTIVES_SECTION]["fields"] + "," + LIST_SECTIONS[
 UNIT_PROMPT_CAPTION = ("Asks Elsa for every primary, secondary and other (for example exploratory) objective, and every "
                       "primary, secondary and other endpoint, each quoted word for word with its source page and sorted by the "
                       "sponsor's own label. Each endpoint also says which objective it corresponds to, if any.")
+DESIGN_FIELDS = LIST_SECTIONS[DESIGN_SECTION]["fields"]
+DESIGN_PROMPT_CAPTION = ("Asks Elsa for the study population, how subjects are assigned to treatment (randomization, "
+                         "allocation ratio, stratification, blinding), each experimental and control arm, the sites, and "
+                         "any other stated design features, with the source page for each. Single-arm studies return no "
+                         "comparator arms.")
+# Each unit is reviewed with one Elsa exchange and finished with one click.
+OBJECTIVES_UNIT, DESIGN_UNIT = "objectives_endpoints", "design"
+UNITS = {OBJECTIVES_UNIT: dict(title=UNIT_TITLE, sections=(OBJECTIVES_SECTION, ENDPOINTS_SECTION),
+                               fields=UNIT_FIELDS, caption=UNIT_PROMPT_CAPTION),
+         DESIGN_UNIT: dict(title="Design Features", sections=(DESIGN_SECTION,),
+                           fields=DESIGN_FIELDS, caption=DESIGN_PROMPT_CAPTION)}
 # Endpoint group identifier -> the objective groups its items can be linked to, in display order.
 ENDPOINT_OBJECTIVE_GROUPS = {"ENDPOINTS.PRIMARY": ("OBJECTIVES.PRIMARY",),
                              "ENDPOINTS.SECONDARY": ("OBJECTIVES.OTHER",),
@@ -193,12 +224,17 @@ def create_request(workspace, batch, custom_fields=None):
         return request_id
 
 
-def unit_request(workspace):
-    """Return the latest still-valid request covering every Objectives and Endpoints field, else None."""
+def unit_request(workspace, unit=OBJECTIVES_UNIT):
+    """Return the latest still-valid request covering every field of a unit, else None. A request made
+    outside the app (no UI metadata, e.g. the fictional example) counts if it asked for all of them."""
+    fields = UNITS[unit]["fields"]
+    wanted = set(fields.split(","))
     state = sa.load(workspace)
     sources = {k: sa.public_source(v) for k, v in state["sources"].items()}
     for request_id, manifest in reversed(list(state["requests"].items())):
-        if manifest.get("ui_custom_fields") == UNIT_FIELDS and manifest["sources"] == sources:
+        covers = manifest.get("ui_custom_fields") == fields or (
+            manifest.get("ui_custom_fields") is None and wanted <= set(manifest["fields"]))
+        if covers and manifest["sources"] == sources:
             return request_id
     return None
 
@@ -219,10 +255,11 @@ def prepare_objectives(workspace):
     return create_request(workspace, config["batch"], config["fields"])
 
 
-def prepare_unit(workspace):
-    with _LOCK:
-        _ensure_other_objectives_field(workspace)
-    return create_request(workspace, LIST_SECTIONS[OBJECTIVES_SECTION]["batch"], UNIT_FIELDS)
+def prepare_unit(workspace, unit=OBJECTIVES_UNIT):
+    if unit == OBJECTIVES_UNIT:
+        with _LOCK:
+            _ensure_other_objectives_field(workspace)
+    return create_request(workspace, 0, UNITS[unit]["fields"])
 
 
 def elsa_filename(request_id):
@@ -309,14 +346,18 @@ def list_references(workspace, number):
                                explanation=record["explanation"], sources=sources, candidate_id=item["candidate_id"],
                                original=original, text=text, approved=current, included=included, removed=removed,
                                reason=accepted["reason"] if (current and removed) else "",
-                               flag=flag, checked=checked, objective_ref=record.get("objective_ref")))
+                               flag=flag, checked=checked, objective_ref=record.get("objective_ref"),
+                               scope=item["field"]["scope"]))
     order = {identifier: n for n, (identifier, _) in enumerate(config["groups"])}
     references.sort(key=lambda r: order.get(r["group"], 99))
     counts = {}
     for ref in references:
         counts[ref["group"]] = counts.get(ref["group"], 0) + 1
         base = config["names"].get(ref["group"], ref["field"])
-        ref["name"] = f"{base} {counts[ref['group']]}" if ref["instance"] != "none" else base + "s (none found by Elsa)"
+        if ref["scope"] == "study":
+            ref["name"] = base  # a one-per-study answer is not numbered
+        else:
+            ref["name"] = f"{base} {counts[ref['group']]}" if ref["instance"] != "none" else base + "s (none found by Elsa)"
     return references
 
 
@@ -386,23 +427,23 @@ def endpoint_subgroups(workspace, endpoint_group):
     return groups
 
 
-def unit_items(workspace):
-    """Every Objectives and Endpoints item together, for the combined workflow's loaded/ready checks."""
-    return objective_references(workspace) + endpoint_references(workspace)
+def unit_items(workspace, unit=OBJECTIVES_UNIT):
+    """Every item of a unit together, for the unit's loaded/ready checks."""
+    return [r for number in UNITS[unit]["sections"] for r in list_references(workspace, number)]
 
 
-def unit_ready(workspace):
-    items = unit_items(workspace)
+def unit_ready(workspace, unit=OBJECTIVES_UNIT):
+    items = unit_items(workspace, unit)
     return bool(items) and all(r["approved"] and not r["flag"] for r in items)
 
 
-def unit_done(workspace):
-    return section_done(workspace, OBJECTIVES_SECTION) and section_done(workspace, ENDPOINTS_SECTION)
+def unit_done(workspace, unit=OBJECTIVES_UNIT):
+    return all(section_done(workspace, number) for number in UNITS[unit]["sections"])
 
 
-def complete_unit(workspace):
-    complete_section(workspace, OBJECTIVES_SECTION)
-    complete_section(workspace, ENDPOINTS_SECTION)
+def complete_unit(workspace, unit=OBJECTIVES_UNIT):
+    for number in UNITS[unit]["sections"]:
+        complete_section(workspace, number)
 
 
 def reviewer_name(workspace):
@@ -563,6 +604,9 @@ def memo_sections(workspace):
         other_endpoints += [r for r in endpoints if endpoint_link(workspace, r) not in linked_instances]
     for index, ref in enumerate(other_endpoints):
         entries.append(("Other Endpoints (if applicable)" if index == 0 else None, ref, False))
+    design = [r for r in list_references(workspace, DESIGN_SECTION) if r["key"] in included]
+    for index, ref in enumerate(design):
+        entries.append((UNITS[DESIGN_UNIT]["title"] if index == 0 else None, ref, False))
     return entries
 
 

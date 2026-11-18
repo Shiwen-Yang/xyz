@@ -20,7 +20,7 @@ If port 8501 is already occupied, close the other Streamlit process before start
 ## First test without a protocol or Pandoc
 
 1. Open the app and choose **Try fictional example**. It opens the **Review workspace** with simulated results.
-2. Expand **3. Primary Objective(s)** on the right. It is already on the last step, **Check each objective**. Click **Looks good** on each of the four bulletins, then **Finish this section ✓**.
+2. Expand **Objectives and Endpoints** on the right. It is already on the last step, **Check each item**. Click **Looks good** on every bulletin, then **Finish this section ✓**. Do the same in **4. Design Features**.
 3. Click **Continue to Export →**. Mark each statement **Looks right**, then click **All Set ✓** and download the draft Markdown. Word generation can wait until Pandoc is approved.
 
 The fictional example uses text sources, not a PDF, so there is no page to highlight.
@@ -30,7 +30,7 @@ The fictional example uses text sources, not a PDF, so there is no page to highl
 Use a non-proprietary PDF whose pages can be freely inspected, after organizational approval.
 
 1. Create a new review and upload that PDF as the main protocol on **Set up**.
-2. In **Review workspace**, open **3. Primary Objective(s)** and click **Prepare prompt**. Click **Copy prompt to clipboard** (or use the text box) and confirm the same PDF is offered for download.
+2. In **Review workspace**, open **Objectives and Endpoints** and click **Prepare prompt**. Click **Copy prompt to clipboard** (or use the text box) and confirm the same PDF is offered for download.
 3. Run the exchange in Elsa with that PDF, then load the JSON response.
 4. Click a reference. The PDF should open at the page and outline the quoted passage. Compare it with the excerpt shown.
 
@@ -44,7 +44,7 @@ Create a named review, enter the reviewer's name, and upload the main protocol. 
 
 ### 2. Review workspace
 
-The left panel is the source PDF. The right panel lists the template sections; only **Primary Objective(s)** works so far.
+The left panel is the source PDF. The right panel lists the template sections; two parts work so far: **Objectives and Endpoints** (template sections 3 and 5, one Elsa exchange) and **4. Design Features** (its own Elsa exchange). The other sections show as not available yet.
 
 Each section works as a short panel: one step is shown at a time, **Next →** unlocks when the step is done, and earlier steps are hidden once you move on (use **← Back** to return).
 
@@ -59,9 +59,13 @@ Each section works as a short panel: one step is shown at a time, **Next →** u
 
 The app rejects malformed, incomplete, unmatched, or structurally invalid responses before changing review content. Re-loading identical bytes is harmless.
 
+#### Design Features
+
+**4. Design Features** works the same way, with its own prompt and response. Each extracted item is a bulletin: study population, allocation and randomization, allocation ratio, stratification factors, blinding, each experimental arm, each control arm, sites, and other design features. If something does not apply (for example a comparator arm or allocation ratio in a single-arm study), the bulletin shows Elsa's explanation; click **Looks good** to confirm it is omitted from the memo. **Continue to Export** unlocks once both parts are finished.
+
 ### 3. Export
 
-The Export screen has the PDF on the left and the memo check on the right. Each statement the memo will contain appears as a bulletin, grouped and ordered the same way the exported Endpoints section is: each objective, immediately followed by the endpoints linked to it (an endpoint's bulletin stays locked until its own objective is marked checked), (secondary endpoints may be linked to a secondary or an other/exploratory objective) then any objective with no linked endpoint, then endpoints linked to nothing in particular:
+The Export screen has the PDF on the left and the memo check on the right. Each statement the memo will contain appears as a bulletin, grouped and ordered the same way the exported Endpoints section is: each objective, immediately followed by the endpoints linked to it (an endpoint's bulletin stays locked until its own objective is marked checked), (secondary endpoints may be linked to a secondary or an other/exploratory objective) then any objective with no linked endpoint, then endpoints linked to nothing in particular, then the Design Features items (never locked):
 
 - **Locate reference** shows its source in the PDF.
 - **Looks right** marks it checked. On an endpoint, this is disabled until its objective is checked.

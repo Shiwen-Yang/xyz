@@ -80,6 +80,34 @@ class StreamlitTests(unittest.TestCase):
         return dict(objectives, entities=objectives["entities"] + endpoints["entities"],
                     fields=dict(objectives["fields"], **endpoints["fields"]))
 
+    def design_payload(self, request_id, page=1, excerpt="Design Features:", single_arm=False):
+        def record(instance, value, status="found"):
+            if status != "found":
+                return dict(instance_id=instance, status=status, value=None, explanation="Not stated in the test PDF.", sources=[])
+            return dict(instance_id=instance, status="found", value=value, explanation="", sources=[dict(
+                document_id="PROTOCOL", pdf_page=page, printed_page=None, section="Design", exact_excerpt=excerpt)])
+        fields = {name: [record("study", excerpt)] for name in (
+            "DESIGN.POPULATION", "DESIGN.RANDOMIZATION", "DESIGN.ALLOCATION_RATIO", "DESIGN.STRATA", "DESIGN.BLINDING",
+            "DESIGN.SITES", "DESIGN.OTHER")}
+        if single_arm:
+            fields["DESIGN.ARM.EXPERIMENTAL"] = [record("E1", excerpt)]
+            fields["DESIGN.ARM.CONTROL"] = [record("none", None, "not_found")]
+            entities = [dict(id="E1", kind="experimental_arm", label="Product A")]
+        else:
+            fields["DESIGN.ARM.EXPERIMENTAL"] = [record("E1", excerpt)]
+            fields["DESIGN.ARM.CONTROL"] = [record("C1", excerpt)]
+            entities = [dict(id="E1", kind="experimental_arm", label="Product A"), dict(id="C1", kind="control_arm", label="Placebo")]
+        return dict(schema_version=1, catalog_version=1, request_id=request_id, search_scope="Test PDF only.",
+                    entities=entities, fields=fields)
+
+    def complete_design(self, workspace, **kwargs):
+        """Prepare, import and approve the Design Features unit through the service layer."""
+        request_id = ui.prepare_unit(workspace, ui.DESIGN_UNIT)
+        ui.import_bytes(workspace, json.dumps(self.design_payload(request_id, **kwargs)).encode())
+        for ref in ui.unit_items(workspace, ui.DESIGN_UNIT):
+            ui.approve_item(workspace, ref["key"], ref["text"])
+        ui.complete_unit(workspace, ui.DESIGN_UNIT)
+
     def workspace_with_pdf(self):
         app = self.start()
         app.text_input[0].input("Study review")
@@ -236,6 +264,10 @@ class StreamlitTests(unittest.TestCase):
         header = next(e for e in app.expander if e.label.endswith(ui.UNIT_TITLE))
         self.assertEqual("✅ " + ui.UNIT_TITLE, header.label)
         self.assertFalse(header.proto.expanded)
+        self.assertTrue(self.button(app, "Continue to Export →").disabled)  # Design Features is still open
+        self.complete_design(workspace)
+        app.run()
+        self.assert_clean(app)
         self.button(app, "Continue to Export →").click().run()
         self.assertEqual("Export", app.session_state["screen"])
 
@@ -243,6 +275,8 @@ class StreamlitTests(unittest.TestCase):
         self.load_unit(app, workspace)
         self.approve_all(app)
         self.button(app, "Finish this section ✓").click().run()
+        self.complete_design(workspace)
+        app.run()
         self.button(app, "Continue to Export →").click().run()
         self.assert_clean(app)
 
@@ -308,7 +342,8 @@ class StreamlitTests(unittest.TestCase):
         app, workspace = self.workspace_with_pdf()
         self.finish_unit(app, workspace)
         headings = [m.value for m in app.markdown if m.value.startswith("#### ")]
-        self.assertEqual(["#### Primary Objectives and Endpoints", "#### Secondary Objectives and Endpoints"], headings)
+        self.assertEqual(["#### Primary Objectives and Endpoints", "#### Secondary Objectives and Endpoints", "#### Design Features"], headings)
+        self.assertFalse(next(b for b in app.button if b.key == "mgood:DESIGN.POPULATION/study").disabled)  # design items are never locked
         self.assertTrue(next(b for b in app.button if b.key == "mgood:ENDPOINTS.PRIMARY/PE1").disabled)
         self.assertTrue(next(b for b in app.button if b.key == "mflag:ENDPOINTS.PRIMARY/PE1").disabled)
         self.assertFalse(next(b for b in app.button if b.key == "mgood:OBJECTIVES.PRIMARY/P1").disabled)
@@ -316,6 +351,33 @@ class StreamlitTests(unittest.TestCase):
         self.assert_clean(app)
         self.assertFalse(next(b for b in app.button if b.key == "mgood:ENDPOINTS.PRIMARY/PE1").disabled)
         self.assertTrue(next(b for b in app.button if b.key == "mgood:ENDPOINTS.SECONDARY/SE1").disabled)  # a different objective
+
+    def test_design_section_prepare_load_check_finish_and_export(self):
+        app, workspace = self.workspace_with_pdf()
+        header = next(e for e in app.expander if e.label.endswith("4. Design Features"))
+        self.assertFalse(header.label.startswith("✅"))
+        prepare = [b for b in app.button if b.label == "Prepare prompt" and b.key.endswith(":design")][0]
+        prepare.click().run()
+        self.assert_clean(app)
+        request_id = ui.unit_request(workspace, ui.DESIGN_UNIT)
+        self.assertTrue(any(request_id in code.value for code in app.code))
+        ui.import_bytes(workspace, json.dumps(self.design_payload(request_id, single_arm=True)).encode())
+        for _ in range(2):
+            next(b for b in app.button if b.key == f"step:{workspace.name}:design:next").click().run()
+        self.assert_clean(app)
+        names = [e.label for e in app.expander if e.label.endswith(("Study Population", "Experimental Arm 1", "Control Arms (none found by Elsa)"))]
+        self.assertEqual(["Study Population", "Experimental Arm 1", "Control Arms (none found by Elsa)"], names)
+        self.assertTrue(next(b for b in app.button if b.key == f"step:{workspace.name}:design:finish").disabled)
+        for index in range(len([b for b in app.button if b.label == "Looks good" and "DESIGN." in b.key])):
+            [b for b in app.button if b.label == "Looks good" and "DESIGN." in b.key][index].click().run()
+        self.assert_clean(app)
+        self.assertIn("DESIGN.ARM.CONTROL/none", sa.load(workspace)["reviewed"])
+        self.assertFalse(sa.load(workspace)["reviewed"]["DESIGN.ARM.CONTROL/none"]["include"])  # confirmed omission
+        next(b for b in app.button if b.key == f"step:{workspace.name}:design:finish").click().run()
+        self.assert_clean(app)
+        header = next(e for e in app.expander if e.label.endswith("4. Design Features"))
+        self.assertTrue(header.label.startswith("✅"))
+        self.assertTrue(ui.unit_done(workspace, ui.DESIGN_UNIT))
 
     def test_progress_indicator_replaces_sidebar_navigation(self):
         app = self.start()

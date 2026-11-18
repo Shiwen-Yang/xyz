@@ -282,6 +282,20 @@ class StageATests(unittest.TestCase):
         self.assertIn("for WEEK24", endpoints[secondary:other])
         self.assertIn("for RESPONSE", endpoints[other:])
 
+    def test_design_features_section_renders_approved_items_with_arm_labels(self):
+        manifest = self.prepare(fields="DESIGN.POPULATION,DESIGN.ARM.EXPERIMENTAL,DESIGN.ARM.CONTROL")
+        self.import_payload(sample_response(manifest))
+        quiet(sa.verification_report, self.workspace)
+        for candidate_id in list(sa.load(self.workspace)["candidates"]):
+            quiet(sa.review_item, self.workspace, candidate_id=candidate_id, action="accept", reviewer="Reviewer A")
+        _, body, _ = sa.assemble(self.workspace)
+        design = body[body.index("# Design Features:"):]
+        design = design[:design.index("\n# ", 3)] if "\n# " in design[3:] else design
+        self.assertIn("**Study population:** DESIGN\\.POPULATION for study", design)
+        self.assertIn("**Treatment Arms:**", design)
+        self.assertIn("experimental — Low dose", design)
+        self.assertIn("control — Placebo", design)
+
     def test_dependency_inventory_required_before_analysis(self):
         with self.assertRaisesRegex(ValueError, "definitions/inventory first"):
             self.prepare("7")

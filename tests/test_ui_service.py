@@ -258,6 +258,37 @@ class UIServiceTests(unittest.TestCase):
         stale = next(r for r in ui.endpoint_references(self.workspace) if r["key"] == "ENDPOINTS.PRIMARY/SCORE")
         self.assertEqual(ui.NOT_LINKED, ui.endpoint_link(self.workspace, stale))  # an unresolvable override still falls back
 
+    def finish_design(self):
+        for ref in ui.unit_items(self.workspace, ui.DESIGN_UNIT):
+            ui.approve_item(self.workspace, ref["key"], ref["text"])
+        ui.complete_unit(self.workspace, ui.DESIGN_UNIT)
+
+    def test_design_references_are_named_and_numbered_sensibly(self):
+        refs = ui.list_references(self.workspace, ui.DESIGN_SECTION)
+        names = {r["key"]: r["name"] for r in refs}
+        self.assertEqual("Study Population", names["DESIGN.POPULATION/study"])
+        self.assertEqual("Allocation Ratio", names["DESIGN.ALLOCATION_RATIO/study"])
+        self.assertEqual(["Experimental Arm 1", "Experimental Arm 2"],
+                         [r["name"] for r in refs if r["group"] == "DESIGN.ARM.EXPERIMENTAL"])
+        self.assertEqual(["Control Arm 1"], [r["name"] for r in refs if r["group"] == "DESIGN.ARM.CONTROL"])
+        order = [r["group"] for r in refs]
+        self.assertEqual(order, sorted(order, key=[g for g, _ in ui.LIST_SECTIONS[ui.DESIGN_SECTION]["groups"]].index))
+
+    def test_design_unit_is_ready_only_when_every_item_is_approved_and_appears_in_the_memo_check(self):
+        self.assertFalse(ui.unit_ready(self.workspace, ui.DESIGN_UNIT))
+        with self.assertRaises(ValueError):
+            ui.complete_unit(self.workspace, ui.DESIGN_UNIT)
+        self.finish_design()
+        self.assertTrue(ui.unit_done(self.workspace, ui.DESIGN_UNIT))
+        entries = ui.memo_sections(self.workspace)
+        design_keys = [ref["key"] for _, ref, _ in entries if ref["key"].startswith("DESIGN.")]
+        self.assertEqual(len([r for r in ui.memo_items(self.workspace) if r["key"].startswith("DESIGN.")]), len(design_keys))
+        self.assertEqual(len(ui.memo_items(self.workspace)), len(entries))
+        self.assertEqual("Design Features", next(h for h, ref, _ in entries if ref["key"].startswith("DESIGN.")))
+
+    def test_fictional_example_counts_as_a_prepared_design_request(self):
+        self.assertIsNotNone(ui.unit_request(self.workspace, ui.DESIGN_UNIT))
+
     def test_unit_ready_and_complete_unit_require_every_objective_and_endpoint_approved(self):
         self.assertFalse(ui.unit_ready(self.workspace))
         for ref in ui.objective_references(self.workspace):
@@ -271,6 +302,8 @@ class UIServiceTests(unittest.TestCase):
         self.assertTrue(ui.unit_ready(self.workspace))
         ui.complete_unit(self.workspace)
         self.assertTrue(ui.unit_done(self.workspace))
+        self.assertFalse(ui.all_sections_done(self.workspace))  # Design Features still open
+        self.finish_design()
         self.assertTrue(ui.all_sections_done(self.workspace))
 
     def test_memo_sections_interleaves_objectives_with_their_endpoints_and_locks_until_checked(self):
@@ -323,8 +356,11 @@ class UIServiceTests(unittest.TestCase):
         for ref in ui.endpoint_references(self.workspace):
             ui.approve_item(self.workspace, ref["key"], ref["text"])
         ui.complete_section(self.workspace, ui.ENDPOINTS_SECTION)
+        self.assertFalse(ui.all_sections_done(self.workspace))  # Design Features still open
+        self.finish_design()
         self.assertTrue(ui.all_sections_done(self.workspace))
         keys = [r["key"] for r in ui.memo_items(self.workspace)]
+        self.assertTrue(any(k.startswith("DESIGN.") for k in keys))
         self.assertTrue(any(k.startswith("ENDPOINTS.") for k in keys))
         self.assertTrue(any(k.startswith("OBJECTIVES.") for k in keys))
 
