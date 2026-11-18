@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,27 @@ class LocateTests(unittest.TestCase):
     def test_missing_text_and_non_pdf_are_not_highlighted(self):
         self.assertEqual("not_found", pdf_locate.locate(PDF, 1, "this sentence is nowhere in the sample document")["status"])
         self.assertEqual("unavailable", pdf_locate.locate(ROOT / "README.md", 1, "Protocol Review")["status"])
+
+    def make_pdf(self, text):
+        import pymupdf
+        path = Path(tempfile.mkdtemp()) / "t.pdf"
+        document = pymupdf.open()
+        document.new_page().insert_textbox(pymupdf.Rect(72, 72, 300, 300), text, fontsize=11)
+        document.save(str(path))
+        return path
+
+    def test_hyphenated_multiline_passage_is_one_box_with_start_and_end_marks(self):
+        path = self.make_pdf("The primary objective is to evaluate the efficacy of the vaccine in prevent-\ning confirmed disease among adults aged 18 to 65 years. More padding text follows here.")
+        found = pdf_locate.locate(path, 1, "The primary objective is to evaluate the efficacy of the vaccine in preventing confirmed disease among adults aged 18 to 65 years.")
+        self.assertEqual("exact", found["status"])
+        self.assertEqual(1, len(found["rects"]))  # not one piece per line
+        self.assertEqual(2, len(found["marks"]))  # first and last word
+
+    def test_changed_wording_still_boxes_the_whole_span_as_partial(self):
+        path = self.make_pdf("The primary objective is to evaluate the efficacy of the vaccine in preventing confirmed disease among adults aged 18 to 65 years. More padding text follows here.")
+        found = pdf_locate.locate(path, 1, "The primary objective is to evaluate the effectiveness of the vaccine in preventing confirmed disease among adults aged 18 to 65 years.")
+        self.assertEqual("partial", found["status"])
+        self.assertEqual(1, len(found["rects"]))
 
 
 if __name__ == "__main__":

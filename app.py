@@ -165,7 +165,7 @@ def focus_reference(version_key, path, page, excerpt):
     shown = found["page"] if found["status"] in ("exact", "partial", "other_page") else (page or 1)
     st.session_state["source_version"] = version_key
     st.session_state["pdf_page"] = shown
-    st.session_state["highlight"] = dict(page=shown, rects=found["rects"], status=found["status"])
+    st.session_state["highlight"] = dict(page=shown, rects=found["rects"], marks=found.get("marks", []), status=found["status"])
 
 
 def svc_sha(path):
@@ -200,7 +200,8 @@ def pdf_panel(workspace):
     page = st.number_input("PDF page position", min_value=1, max_value=maximum, key="pdf_page")
     full = st.checkbox("Show full document", key="full_pdf")
     highlight = st.session_state.get("highlight") or {}
-    annotations = [dict(page=highlight["page"], color="#e6a700", border="solid", **r) for r in highlight.get("rects", [])] \
+    annotations = ([dict(page=highlight["page"], color="#e6a700", border="solid", **r) for r in highlight.get("rects", [])]
+                   + [dict(page=highlight["page"], color="#d62728", border="solid", **r) for r in highlight.get("marks", [])]) \
         if highlight.get("page") else []
     if highlight.get("status") == "not_found" and highlight.get("page") == page:
         st.warning("The cited excerpt was not found in this page's text, so nothing is highlighted. Read the page directly.")
