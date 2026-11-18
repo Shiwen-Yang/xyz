@@ -69,7 +69,9 @@ class StreamlitTests(unittest.TestCase):
                     entities=[dict(id="PE1", kind="primary_endpoint", label="Primary endpoint 1"),
                               dict(id="SE1", kind="secondary_endpoint", label="Secondary endpoint 1")],
                     fields={"ENDPOINTS.PRIMARY": [record("PE1", excerpt, link_primary)],
-                            "ENDPOINTS.SECONDARY": [record("SE1", excerpt, link_secondary)]})
+                            "ENDPOINTS.SECONDARY": [record("SE1", excerpt, link_secondary)],
+                            "ENDPOINTS.OTHER": [dict(instance_id="none", status="not_found", value=None, sources=[],
+                                                    explanation="No other endpoints in the test PDF.")]})
 
     def combined_payload(self, request_id, **kwargs):
         """One Elsa exchange covering Objectives and Endpoints together, as the merged workflow requests it."""
@@ -114,7 +116,7 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Next →").click().run()
         self.assert_clean(app)
 
-    def approve_all(self, app, count=5):
+    def approve_all(self, app, count=6):
         for index in range(count):
             [b for b in app.button if b.label == "Looks good"][index].click().run()
 
@@ -132,7 +134,7 @@ class StreamlitTests(unittest.TestCase):
         app.text_input(key=f"folder:{workspace.name}").input(str(downloads)).run()
         self.button(app, "Load response from this folder").click().run()
         self.assert_clean(app)
-        self.assertEqual(5, len(sa.load(workspace)["candidates"]))
+        self.assertEqual(6, len(sa.load(workspace)["candidates"]))
         self.assertEqual(str(downloads), sa.read_json(workspace / "review.json")["ui_download_dir"])
         self.assertFalse([b for b in app.button if b.label == "Locate reference"])  # still on step 2
         self.button(app, "Next →").click().run()
@@ -142,9 +144,9 @@ class StreamlitTests(unittest.TestCase):
         names = [e.label for e in app.expander if "Objective" in e.label and not e.label[0].isdigit() and e.label != ui.UNIT_TITLE]
         self.assertEqual(["Primary Objective 1", "Secondary Objective 1", "Other Objectives (none found by Elsa)"], names)
         locate = [b for b in app.button if b.label == "Locate reference"]
-        self.assertEqual(5, len(locate))
+        self.assertEqual(6, len(locate))
         # order is now: Primary Objective 1, its endpoint, Secondary Objective 1, its endpoint, then the exploratory placeholder
-        self.assertTrue(locate[4].disabled)  # the "not found" item cites nothing
+        self.assertTrue(locate[4].disabled and locate[5].disabled)  # the "not found" items cite nothing
         locate[0].click().run()
         self.assert_clean(app)
         args = json.loads(app.get("component_instance")[-1].proto.json_args)
@@ -234,6 +236,36 @@ class StreamlitTests(unittest.TestCase):
         self.button(app, "Continue to Export →").click().run()
         self.assert_clean(app)
 
+    def test_export_check_locate_reference_aims_the_pdf(self):
+        app, workspace = self.workspace_with_pdf()
+        self.finish_unit(app, workspace)
+        self.assertEqual("Export", app.session_state["screen"])
+        for key in ("OBJECTIVES.PRIMARY/P1", "ENDPOINTS.PRIMARY/PE1"):
+            app.session_state["pdf_page"] = 1
+            app.session_state["highlight"] = None
+            button = next(b for b in app.button if b.key == "mlocate:" + key)
+            self.assertFalse(button.disabled)
+            button.click().run()
+            self.assert_clean(app)
+            self.assertEqual("exact", app.session_state["highlight"]["status"], key)
+            self.assertTrue(app.session_state["highlight"]["rects"], key)
+
+    def test_locate_still_works_on_export_after_locating_in_review_workspace(self):
+        app, workspace = self.workspace_with_pdf()
+        self.load_unit(app, workspace)
+        next(b for b in app.button if b.label == "Locate reference").click().run()
+        self.assertEqual("exact", app.session_state["highlight"]["status"])
+        self.approve_all(app)
+        self.button(app, "Finish this section ✓").click().run()
+        self.button(app, "Continue to Export →").click().run()
+        self.assert_clean(app)
+        for _ in range(3):  # repeat clicks, as a reviewer would
+            before = app.session_state["highlight"]
+            next(b for b in app.button if b.key == "mlocate:ENDPOINTS.PRIMARY/PE1").click().run()
+            self.assert_clean(app)
+            self.assertEqual("exact", app.session_state["highlight"]["status"])
+            self.assertEqual(1, app.session_state["pdf_page"])
+
     def test_export_check_flag_reopens_bulletin_and_all_set_requires_every_check(self):
         app, workspace = self.workspace_with_pdf()
         self.finish_unit(app, workspace)
@@ -316,7 +348,7 @@ class StreamlitTests(unittest.TestCase):
                           "##### Secondary Objective 1", "##### Endpoints — Secondary Objective 1:", "##### Not linked to a specific objective"],
                          subheadings)
         names = [e.label for e in app.expander if "Endpoint" in e.label and not e.label[0].isdigit() and e.label != ui.UNIT_TITLE]
-        self.assertEqual(["Primary Endpoint 1", "Secondary Endpoint 1"], names)
+        self.assertEqual(["Primary Endpoint 1", "Secondary Endpoint 1", "Other Endpoints (none found by Elsa)"], names)
         link = next(w for w in app.selectbox if w.key == f"objlink:{workspace.name}:ENDPOINTS.PRIMARY/PE1")
         self.assertEqual("P1", link.value)  # defaulted from Elsa's own reported correspondence
         box = next(w for w in app.text_area if w.key.startswith(f"objtext:{workspace.name}:ENDPOINTS.PRIMARY/PE1:"))
@@ -360,6 +392,8 @@ class StreamlitTests(unittest.TestCase):
                            "ENDPOINTS.PRIMARY": [endpoint("PE1", "P1"), endpoint("PE2", "P2")],
                            "ENDPOINTS.SECONDARY": [dict(instance_id="none", status="not_found", value=None, sources=[],
                                                         explanation="No secondary endpoints in the test PDF.")],
+                           "ENDPOINTS.OTHER": [dict(instance_id="none", status="not_found", value=None, sources=[],
+                                                    explanation="No other endpoints in the test PDF.")],
                        })
         ui.import_bytes(workspace, json.dumps(payload).encode())
         self.button(app, "Next →").click().run()
@@ -368,7 +402,7 @@ class StreamlitTests(unittest.TestCase):
         names = [e.label for e in app.expander if e.label != ui.UNIT_TITLE and not e.label[0].isdigit() and "cited passage" not in e.label]
         self.assertEqual(["Primary Objective 1", "Primary Endpoint 1", "Primary Objective 2", "Primary Endpoint 2",
                           "Secondary Endpoints (none found by Elsa)", "Secondary Objective 1",
-                          "Other Objectives (none found by Elsa)"], names)
+                          "Other Endpoints (none found by Elsa)", "Other Objectives (none found by Elsa)"], names)
 
     @unittest.skipUnless(os.environ.get("PANDOC") or shutil.which("pandoc"), "Set PANDOC for Word download control test")
     def test_word_generation_exposes_download_control(self):
